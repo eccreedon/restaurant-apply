@@ -1,17 +1,6 @@
 import { supabase } from "./supabase"
 import {
   User,
-  Briefcase,
-  Code,
-  Palette,
-  TrendingUp,
-  Users,
-  Shield,
-  Wrench,
-  GraduationCap,
-  Heart,
-  Building,
-  Truck,
   ChefHat,
   UtensilsCrossed,
   Utensils,
@@ -30,35 +19,73 @@ import {
   Egg,
   Carrot,
   Croissant,
+  Donut,
   Cookie,
   Beef,
   Fish,
   Wheat,
   Salad,
-} from "lucide-react"
-
-export interface PersonaConfig {
-  id: string
-  title: string
-  description: string
-  icon: string
-  questions: string[]
-}
-
-export const iconMap = {
-  // Professional
-  User,
-  Briefcase,
   Code,
   Palette,
-  TrendingUp,
-  Users,
-  Shield,
-  Wrench,
+  Calculator,
+  Briefcase,
+  Stethoscope,
   GraduationCap,
-  Heart,
-  Building,
+  Wrench,
   Truck,
+  Building,
+  ShoppingCart,
+  Camera,
+  Music,
+  Gamepad2,
+  Heart,
+  Shield,
+  Zap,
+  Globe,
+  Smartphone,
+  Laptop,
+  Database,
+  Settings,
+  BarChart,
+  TrendingUp,
+  Target,
+  Award,
+  Star,
+  Crown,
+  Gem,
+  Rocket,
+  Lightbulb,
+  Brain,
+  Eye,
+  Ear,
+  MessageCircle,
+  Phone,
+  Mail,
+  Calendar,
+  Clock,
+  MapPin,
+  Home,
+  Car,
+  Plane,
+  Ship,
+  Train,
+  Bike,
+  TreePine,
+  Flower,
+  Sun,
+  Moon,
+  Cloud,
+  Umbrella,
+  Snowflake,
+  Flame,
+  Droplets,
+  Mountain,
+  Waves,
+  Leaf,
+  SproutIcon as Seedling,
+} from "lucide-react"
+
+export const iconMap = {
   // Food Service & Hospitality
   ChefHat,
   UtensilsCrossed,
@@ -78,60 +105,107 @@ export const iconMap = {
   Egg,
   Carrot,
   Croissant,
+  Donut,
   Cookie,
   Beef,
   Fish,
   Wheat,
   Salad,
+
+  // Technology
+  Code,
+  Smartphone,
+  Laptop,
+  Database,
+  Settings,
+  Zap,
+  Globe,
+
+  // Business & Finance
+  Briefcase,
+  Calculator,
+  BarChart,
+  TrendingUp,
+  Target,
+  ShoppingCart,
+  Building,
+
+  // Creative
+  Palette,
+  Camera,
+  Music,
+  Gamepad2,
+  Lightbulb,
+
+  // Healthcare & Education
+  Stethoscope,
+  GraduationCap,
+  Heart,
+  Brain,
+  Eye,
+  Ear,
+
+  // Industrial & Transportation
+  Wrench,
+  Truck,
+  Car,
+  Plane,
+  Ship,
+  Train,
+  Bike,
+
+  // Communication & Time
+  MessageCircle,
+  Phone,
+  Mail,
+  Calendar,
+  Clock,
+
+  // Achievement & Status
+  Award,
+  Star,
+  Crown,
+  Gem,
+  Rocket,
+  Shield,
+
+  // Location & Environment
+  MapPin,
+  Home,
+  TreePine,
+  Flower,
+  Sun,
+  Moon,
+  Cloud,
+  Umbrella,
+  Snowflake,
+  Flame,
+  Droplets,
+  Mountain,
+  Waves,
+  Leaf,
+  Seedling,
+
+  // Default
+  User,
 }
 
-export const iconCategories = {
-  Professional: [
-    "User",
-    "Briefcase",
-    "Code",
-    "Palette",
-    "TrendingUp",
-    "Users",
-    "Shield",
-    "Wrench",
-    "GraduationCap",
-    "Heart",
-    "Building",
-    "Truck",
-  ],
-  "Food Service": [
-    "ChefHat",
-    "UtensilsCrossed",
-    "Utensils",
-    "Wine",
-    "Coffee",
-    "Pizza",
-    "Soup",
-    "CakeSlice",
-    "IceCream",
-    "Sandwich",
-    "Apple",
-    "Grape",
-    "Cherry",
-    "Banana",
-    "Milk",
-    "Egg",
-    "Carrot",
-    "Croissant",
-    "Cookie",
-    "Beef",
-    "Fish",
-    "Wheat",
-    "Salad",
-  ],
+export interface PersonaConfig {
+  id: string
+  title: string
+  description: string
+  icon: string
+  color: string
+  questions: string[]
+  created_at?: string
+  updated_at?: string
 }
 
 export async function getAllPersonasFromDB(): Promise<PersonaConfig[]> {
   try {
     console.log("Fetching personas from database...")
 
-    const { data, error } = await supabase.from("personas").select("*").order("title")
+    const { data, error } = await supabase.from("personas").select("*").order("created_at", { ascending: false })
 
     if (error) {
       console.error("Error fetching personas:", error)
@@ -147,68 +221,59 @@ export async function getAllPersonasFromDB(): Promise<PersonaConfig[]> {
 }
 
 export async function createPersonaInDB(
-  persona: Omit<PersonaConfig, "id">,
-): Promise<{ success: boolean; error?: string }> {
+  persona: Omit<PersonaConfig, "id" | "created_at" | "updated_at">,
+): Promise<PersonaConfig | null> {
   try {
-    console.log("Creating persona:", persona.title)
-
     const { data, error } = await supabase
       .from("personas")
       .insert([
         {
-          title: persona.title,
-          description: persona.description,
-          icon: persona.icon,
-          questions: persona.questions,
+          ...persona,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         },
       ])
       .select()
+      .single()
 
     if (error) {
       console.error("Error creating persona:", error)
       throw error
     }
 
-    console.log("Persona created successfully:", data)
-    return { success: true }
+    return data
   } catch (error) {
     console.error("Error in createPersonaInDB:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
-    }
+    return null
   }
 }
 
-export async function updatePersonaInDB(
-  id: string,
-  updates: Partial<PersonaConfig>,
-): Promise<{ success: boolean; error?: string }> {
+export async function updatePersonaInDB(id: string, updates: Partial<PersonaConfig>): Promise<PersonaConfig | null> {
   try {
-    console.log("Updating persona:", id)
-
-    const { data, error } = await supabase.from("personas").update(updates).eq("id", id).select()
+    const { data, error } = await supabase
+      .from("personas")
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single()
 
     if (error) {
       console.error("Error updating persona:", error)
       throw error
     }
 
-    console.log("Persona updated successfully:", data)
-    return { success: true }
+    return data
   } catch (error) {
     console.error("Error in updatePersonaInDB:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
-    }
+    return null
   }
 }
 
-export async function deletePersonaFromDB(id: string): Promise<{ success: boolean; error?: string }> {
+export async function deletePersonaFromDB(id: string): Promise<boolean> {
   try {
-    console.log("Deleting persona:", id)
-
     const { error } = await supabase.from("personas").delete().eq("id", id)
 
     if (error) {
@@ -216,13 +281,9 @@ export async function deletePersonaFromDB(id: string): Promise<{ success: boolea
       throw error
     }
 
-    console.log("Persona deleted successfully")
-    return { success: true }
+    return true
   } catch (error) {
     console.error("Error in deletePersonaFromDB:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
-    }
+    return false
   }
 }

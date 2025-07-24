@@ -19,15 +19,26 @@ export async function saveResponse(responseData: ResponseData): Promise<{ succes
     console.log("Starting to save response for:", responseData.first_name, responseData.last_name)
 
     // Validate required fields
-    if (!responseData.first_name?.trim() || !responseData.last_name?.trim() || !responseData.email?.trim()) {
-      throw new Error("Missing required fields: first_name, last_name, or email")
+    if (!responseData.first_name?.trim()) {
+      throw new Error("First name is required")
+    }
+    if (!responseData.last_name?.trim()) {
+      throw new Error("Last name is required")
+    }
+    if (!responseData.email?.trim()) {
+      throw new Error("Email is required")
+    }
+    if (!responseData.persona?.trim()) {
+      throw new Error("Persona is required")
+    }
+    if (!responseData.questions?.length) {
+      throw new Error("Questions are required")
+    }
+    if (!responseData.answers?.length) {
+      throw new Error("Answers are required")
     }
 
-    if (!responseData.persona || !responseData.questions?.length || !responseData.answers?.length) {
-      throw new Error("Missing required fields: persona, questions, or answers")
-    }
-
-    console.log("Performing AI analysis...")
+    console.log("Validation passed, performing AI analysis...")
 
     // Get AI analysis
     const analysis = await analyzeAnswers(responseData.questions, responseData.answers, responseData.persona)
@@ -39,30 +50,35 @@ export async function saveResponse(responseData: ResponseData): Promise<{ succes
       last_name: responseData.last_name.trim(),
       email: responseData.email.trim(),
       phone: responseData.phone?.trim() || null,
-      persona: responseData.persona,
+      persona: responseData.persona.trim(),
       questions: responseData.questions,
       answers: responseData.answers,
       analysis: analysis,
       created_at: new Date().toISOString(),
     }
 
-    console.log("Saving to database...")
+    console.log("Saving to database with data:", dbData)
 
     // Save to database
     const { data, error } = await supabase.from("responses").insert([dbData]).select()
 
     if (error) {
-      console.error("Database error:", error)
-      throw error
+      console.error("Supabase error:", error)
+      throw new Error(`Database error: ${error.message}`)
     }
 
-    console.log("Response saved successfully:", data)
+    if (!data || data.length === 0) {
+      throw new Error("No data returned from database insert")
+    }
+
+    console.log("Response saved successfully:", data[0])
     return { success: true }
   } catch (error) {
     console.error("Error saving response:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
+      error: errorMessage,
     }
   }
 }

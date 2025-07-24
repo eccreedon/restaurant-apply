@@ -7,7 +7,7 @@ export interface AnalysisResult {
 
 export async function analyzeAnswers(questions: string[], answers: string[], persona: string): Promise<AnalysisResult> {
   try {
-    console.log("Calling AI analysis API for persona:", persona)
+    console.log("Starting AI analysis API call...")
 
     const response = await fetch("/api/analyze", {
       method: "POST",
@@ -22,20 +22,20 @@ export async function analyzeAnswers(questions: string[], answers: string[], per
     })
 
     if (!response.ok) {
-      throw new Error(`API call failed: ${response.status}`)
+      console.error("API response not ok:", response.status, response.statusText)
+      throw new Error(`API request failed: ${response.status}`)
     }
 
     const result = await response.json()
-    console.log("AI analysis completed successfully")
-
+    console.log("AI analysis completed successfully:", result)
     return result
   } catch (error) {
-    console.error("Error calling AI analysis API:", error)
+    console.error("Error in analyzeAnswers:", error)
 
-    // Return a fallback analysis
+    // Return fallback analysis
     return {
-      summary: `Candidate has completed the ${persona} assessment. Manual review recommended.`,
-      strengths: ["Completed all required questions", "Showed engagement with the process"],
+      summary: `Assessment completed for ${persona} position. Manual review recommended.`,
+      strengths: ["Completed all required questions", "Engaged with the assessment process"],
       concerns: ["AI analysis temporarily unavailable"],
       recommendation: "Manual Review Required",
     }
