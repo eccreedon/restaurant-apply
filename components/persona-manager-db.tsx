@@ -117,11 +117,34 @@ import {
   Terminal,
   Workflow,
   Loader2,
+  ChefHat,
+  UtensilsCrossed,
+  Utensils,
+  Wine,
+  CakeSlice,
+  IceCream,
+  Pizza,
+  Soup,
+  Salad,
+  Sandwich,
+  Beef,
+  Fish,
+  Wheat,
+  Apple,
+  Grape,
+  Cherry,
+  Banana,
+  Carrot,
+  Milk,
+  Egg,
+  Croissant,
+  Donut,
+  Cookie,
 } from "lucide-react"
 import { loadPersonasFromDB, savePersonaToDB, deletePersonaFromDB } from "@/lib/persona-db"
 import type { PersonaConfig } from "@/app/page"
 
-// Same icon configuration as before
+// Expanded icon collection with Food Service & Hospitality
 const availableIcons = [
   // Professional & Business
   { name: "Briefcase", component: Briefcase, category: "Professional" },
@@ -207,11 +230,36 @@ const availableIcons = [
   { name: "DollarSign", component: DollarSign, category: "Finance" },
   { name: "CreditCard", component: CreditCard, category: "Finance" },
 
+  // Food Service & Hospitality - NEW CATEGORY
+  { name: "ChefHat", component: ChefHat, category: "Food Service" },
+  { name: "UtensilsCrossed", component: UtensilsCrossed, category: "Food Service" },
+  { name: "Utensils", component: Utensils, category: "Food Service" },
+  { name: "Wine", component: Wine, category: "Food Service" },
+  { name: "Coffee", component: Coffee, category: "Food Service" },
+  { name: "CakeSlice", component: CakeSlice, category: "Food Service" },
+  { name: "Pizza", component: Pizza, category: "Food Service" },
+  { name: "Soup", component: Soup, category: "Food Service" },
+  { name: "IceCream", component: IceCream, category: "Food Service" },
+  { name: "Sandwich", component: Sandwich, category: "Food Service" },
+  { name: "Apple", component: Apple, category: "Food Service" },
+  { name: "Grape", component: Grape, category: "Food Service" },
+  { name: "Cherry", component: Cherry, category: "Food Service" },
+  { name: "Banana", component: Banana, category: "Food Service" },
+  { name: "Milk", component: Milk, category: "Food Service" },
+  { name: "Croissant", component: Croissant, category: "Food Service" },
+  { name: "Donut", component: Donut, category: "Food Service" },
+  { name: "Cookie", component: Cookie, category: "Food Service" },
+  { name: "Beef", component: Beef, category: "Food Service" },
+  { name: "Fish", component: Fish, category: "Food Service" },
+  { name: "Wheat", component: Wheat, category: "Food Service" },
+  { name: "Salad", component: Salad, category: "Food Service" },
+  { name: "Egg", component: Egg, category: "Food Service" },
+  { name: "Carrot", component: Carrot, category: "Food Service" },
+
   // General & Lifestyle
   { name: "Heart", component: Heart, category: "General" },
   { name: "Shield", component: Shield, category: "General" },
   { name: "Zap", component: Zap, category: "General" },
-  { name: "Coffee", component: Coffee, category: "General" },
   { name: "Car", component: Car, category: "General" },
   { name: "Truck", component: Truck, category: "General" },
   { name: "Home", component: Home, category: "General" },
@@ -613,7 +661,7 @@ export function PersonaManagerDB() {
   )
 }
 
-// Same dialog components as before but with database integration
+// Dialog components
 function CreatePersonaDialog({
   isOpen,
   onOpenChange,

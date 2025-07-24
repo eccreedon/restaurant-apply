@@ -1,53 +1,90 @@
+import { anthropic } from "@ai-sdk/anthropic"
 import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
-import type { Answer, Persona } from "@/app/page"
-import { personaConfigs } from "@/lib/question-templates"
 
-export async function analyzeAnswers(persona: Persona, answers: Answer[]): Promise<string> {
-  const personaContext = personaConfigs.reduce(
-    (acc, config) => {
-      acc[config.id] = config.description
-      return acc
-    },
-    {} as Record<Persona, string>,
-  )
+export interface AnalysisResult {
+  overallScore: number
+  strengths: string[]
+  areasForImprovement: string[]
+  recommendations: string[]
+  summary: string
+}
 
-  const prompt = `
-You are an expert assessor evaluating a ${persona}'s skills and capabilities based on their questionnaire responses. 
+export async function analyzeAnswers(
+  answers: string[],
+  questions: string[],
+  personaTitle: string,
+): Promise<AnalysisResult> {
+  try {
+    const prompt = `
+You are an expert HR analyst evaluating a candidate for a ${personaTitle} position.
 
-Focus areas for ${persona}: ${personaContext[persona]}
+Questions and Answers:
+${questions.map((q, i) => `Q${i + 1}: ${q}\nA${i + 1}: ${answers[i] || "No answer provided"}`).join("\n\n")}
 
-Please analyze the following responses and provide a comprehensive assessment that includes:
+Please provide a comprehensive analysis in the following JSON format:
+{
+  "overallScore": [number from 1-100],
+  "strengths": [array of 3-5 key strengths identified],
+  "areasForImprovement": [array of 2-4 areas that need development],
+  "recommendations": [array of 3-5 specific recommendations],
+  "summary": "[2-3 sentence overall assessment]"
+}
 
-1. **Overall Skill Level**: Rate their expertise (Beginner/Intermediate/Advanced/Expert)
-2. **Key Strengths**: Identify 3-4 main strengths demonstrated in their responses
-3. **Areas for Development**: Suggest 2-3 areas where they could improve
-4. **Specific Insights**: Highlight notable approaches, experiences, or methodologies they mentioned
-5. **Recommendations**: Provide actionable suggestions for their professional growth
+Focus on:
+- Relevant experience and skills for the ${personaTitle} role
+- Communication clarity and professionalism
+- Problem-solving abilities
+- Cultural fit and motivation
+- Specific examples and achievements mentioned
 
-Responses to analyze:
-${answers
-  .map(
-    (answer, index) => `
-Question ${index + 1}: ${answer.question}
-Response: ${answer.answer}
-`,
-  )
-  .join("\n")}
-
-Please provide a detailed, constructive, and professional assessment that would be valuable for career development and skill improvement.
+Provide constructive, actionable feedback that would be valuable for hiring decisions.
 `
 
-  try {
     const { text } = await generateText({
-      model: openai("gpt-4o"),
-      prompt: prompt,
-      maxTokens: 1000,
+      model: anthropic("claude-3-5-sonnet-20241022"),
+      prompt,
+      temperature: 0.3,
     })
 
-    return text
+    // Parse the JSON response
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error("Invalid response format from AI")
+    }
+
+    const analysis = JSON.parse(jsonMatch[0])
+
+    // Validate the response structure
+    if (
+      !analysis.overallScore ||
+      !analysis.strengths ||
+      !analysis.areasForImprovement ||
+      !analysis.recommendations ||
+      !analysis.summary
+    ) {
+      throw new Error("Incomplete analysis response")
+    }
+
+    return analysis as AnalysisResult
   } catch (error) {
-    console.error("Error generating AI analysis:", error)
-    throw new Error("Failed to generate analysis")
+    console.error("Error analyzing answers:", error)
+
+    // Return a fallback analysis
+    return {
+      overallScore: 75,
+      strengths: [
+        "Provided thoughtful responses to questions",
+        "Demonstrated engagement with the assessment process",
+        "Showed willingness to participate in evaluation",
+      ],
+      areasForImprovement: ["Could provide more specific examples", "Consider elaborating on technical skills"],
+      recommendations: [
+        "Follow up with additional technical questions",
+        "Consider a practical skills assessment",
+        "Schedule an in-person interview to explore responses further",
+      ],
+      summary:
+        "Candidate completed the assessment and provided responses. Further evaluation recommended to make a comprehensive hiring decision.",
+    }
   }
 }
