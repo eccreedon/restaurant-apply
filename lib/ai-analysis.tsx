@@ -2,89 +2,76 @@ import { anthropic } from "@ai-sdk/anthropic"
 import { generateText } from "ai"
 
 export interface AnalysisResult {
-  overallScore: number
-  strengths: string[]
-  areasForImprovement: string[]
-  recommendations: string[]
   summary: string
+  strengths: string[]
+  concerns: string[]
+  recommendations: string[]
 }
 
-export async function analyzeAnswers(
-  answers: string[],
-  questions: string[],
-  personaTitle: string,
-): Promise<AnalysisResult> {
+export async function analyzeAnswers(questions: string[], answers: string[], persona: string): Promise<AnalysisResult> {
   try {
     const prompt = `
-You are an expert HR analyst evaluating a candidate for a ${personaTitle} position.
+You are an expert hiring manager analyzing responses for a ${persona} position. 
 
 Questions and Answers:
 ${questions.map((q, i) => `Q${i + 1}: ${q}\nA${i + 1}: ${answers[i] || "No answer provided"}`).join("\n\n")}
 
-Please provide a comprehensive analysis in the following JSON format:
-{
-  "overallScore": [number from 1-100],
-  "strengths": [array of 3-5 key strengths identified],
-  "areasForImprovement": [array of 2-4 areas that need development],
-  "recommendations": [array of 3-5 specific recommendations],
-  "summary": "[2-3 sentence overall assessment]"
-}
+Please provide a comprehensive analysis in the following format:
 
-Focus on:
-- Relevant experience and skills for the ${personaTitle} role
-- Communication clarity and professionalism
-- Problem-solving abilities
-- Cultural fit and motivation
-- Specific examples and achievements mentioned
+SUMMARY:
+[2-3 sentence overall assessment of the candidate]
 
-Provide constructive, actionable feedback that would be valuable for hiring decisions.
+STRENGTHS:
+- [Key strength 1]
+- [Key strength 2]
+- [Key strength 3]
+
+CONCERNS:
+- [Concern 1 if any]
+- [Concern 2 if any]
+
+RECOMMENDATIONS:
+- [Recommendation 1]
+- [Recommendation 2]
+
+Keep the analysis professional, constructive, and specific to the ${persona} role.
 `
 
     const { text } = await generateText({
-      model: anthropic("claude-3-5-sonnet-20241022"),
+      model: anthropic("claude-3-haiku-20240307"),
       prompt,
-      temperature: 0.3,
+      maxTokens: 1000,
     })
 
-    // Parse the JSON response
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      throw new Error("Invalid response format from AI")
+    // Parse the response into structured format
+    const sections = text.split(/(?:SUMMARY:|STRENGTHS:|CONCERNS:|RECOMMENDATIONS:)/i)
+
+    const summary = sections[1]?.trim() || text.substring(0, 200) + "..."
+    const strengthsText = sections[2]?.trim() || ""
+    const concernsText = sections[3]?.trim() || ""
+    const recommendationsText = sections[4]?.trim() || ""
+
+    const parseList = (text: string): string[] => {
+      return text
+        .split("\n")
+        .map((line) => line.replace(/^[-•*]\s*/, "").trim())
+        .filter((line) => line.length > 0)
+        .slice(0, 5) // Limit to 5 items
     }
 
-    const analysis = JSON.parse(jsonMatch[0])
-
-    // Validate the response structure
-    if (
-      !analysis.overallScore ||
-      !analysis.strengths ||
-      !analysis.areasForImprovement ||
-      !analysis.recommendations ||
-      !analysis.summary
-    ) {
-      throw new Error("Incomplete analysis response")
+    return {
+      summary,
+      strengths: parseList(strengthsText),
+      concerns: parseList(concernsText),
+      recommendations: parseList(recommendationsText),
     }
-
-    return analysis as AnalysisResult
   } catch (error) {
     console.error("Error analyzing answers:", error)
-
-    // Return a fallback analysis
     return {
-      overallScore: 75,
-      strengths: [
-        "Provided thoughtful responses to questions",
-        "Demonstrated engagement with the assessment process",
-        "Showed willingness to participate in evaluation",
-      ],
-      areasForImprovement: ["Could provide more specific examples", "Consider elaborating on technical skills"],
-      recommendations: [
-        "Follow up with additional technical questions",
-        "Consider a practical skills assessment",
-        "Schedule an in-person interview to explore responses further",
-      ],
-      summary:
-        "Candidate completed the assessment and provided responses. Further evaluation recommended to make a comprehensive hiring decision.",
+      summary: "Analysis could not be completed at this time.",
+      strengths: [],
+      concerns: [],
+      recommendations: ["Please review responses manually."],
     }
   }
 }

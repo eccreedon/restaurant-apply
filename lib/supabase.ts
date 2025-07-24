@@ -13,25 +13,24 @@ export interface PersonaRow {
   icon: string
   color: string
   questions: string[]
-  created_at?: string
-  updated_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ResponseRow {
+  id: string
+  persona_id: string
+  respondent_name: string
+  respondent_email: string
+  responses: string[]
+  ai_analysis?: string
+  created_at: string
 }
 
 export interface AssessmentRow {
   id: string
   title: string
-  persona_id: string
-  created_at: string
+  persona_id?: string
   shareable_link: string
-}
-
-export interface ResponseRow {
-  id: string
-  assessment_id: string
-  respondent_name: string
-  respondent_email: string
-  persona_id: string
-  answers: any[]
-  ai_summary?: string
-  completed_at: string
+  created_at: string
 }

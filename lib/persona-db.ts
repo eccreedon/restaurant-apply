@@ -1,65 +1,91 @@
-import { supabase, type PersonaRow } from "./supabase"
-import type { PersonaConfig } from "@/app/page"
+import { supabase } from "./supabase"
 
-// Convert database row to PersonaConfig
-function dbRowToPersonaConfig(row: PersonaRow): PersonaConfig {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    icon: row.icon,
-    color: row.color,
-    questions: Array.isArray(row.questions) ? row.questions : [],
-  }
+export interface PersonaConfig {
+  id: string
+  title: string
+  description: string
+  icon: string
+  color: string
+  questions: string[]
+  created_at?: string
+  updated_at?: string
 }
 
-// Convert PersonaConfig to database row
-function personaConfigToDbRow(persona: PersonaConfig): Omit<PersonaRow, "created_at" | "updated_at"> {
-  return {
-    id: persona.id,
-    title: persona.title,
-    description: persona.description,
-    icon: persona.icon,
-    color: persona.color,
-    questions: persona.questions,
-  }
-}
-
-export async function loadPersonasFromDB(): Promise<PersonaConfig[]> {
+export async function getAllPersonasFromDB(): Promise<PersonaConfig[]> {
   try {
-    const { data, error } = await supabase.from("personas").select("*").order("created_at", { ascending: true })
+    const { data, error } = await supabase.from("personas").select("*").order("created_at", { ascending: false })
 
     if (error) {
       console.error("Error loading personas:", error)
       return []
     }
 
-    return data.map(dbRowToPersonaConfig)
+    return data || []
   } catch (error) {
     console.error("Error loading personas:", error)
     return []
   }
 }
 
-export async function savePersonaToDB(persona: PersonaConfig): Promise<boolean> {
+export async function createPersonaInDB(
+  persona: Omit<PersonaConfig, "id" | "created_at" | "updated_at">,
+): Promise<PersonaConfig | null> {
   try {
-    const { error } = await supabase.from("personas").upsert(personaConfigToDbRow(persona))
+    const { data, error } = await supabase
+      .from("personas")
+      .insert({
+        title: persona.title,
+        description: persona.description,
+        icon: persona.icon,
+        color: persona.color,
+        questions: persona.questions,
+      })
+      .select()
+      .single()
 
     if (error) {
-      console.error("Error saving persona:", error)
-      return false
+      console.error("Error creating persona:", error)
+      return null
     }
 
-    return true
+    return data
   } catch (error) {
-    console.error("Error saving persona:", error)
-    return false
+    console.error("Error creating persona:", error)
+    return null
   }
 }
 
-export async function deletePersonaFromDB(personaId: string): Promise<boolean> {
+export async function updatePersonaInDB(id: string, updates: Partial<PersonaConfig>): Promise<PersonaConfig | null> {
   try {
-    const { error } = await supabase.from("personas").delete().eq("id", personaId)
+    const { data, error } = await supabase
+      .from("personas")
+      .update({
+        title: updates.title,
+        description: updates.description,
+        icon: updates.icon,
+        color: updates.color,
+        questions: updates.questions,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error updating persona:", error)
+      return null
+    }
+
+    return data
+  } catch (error) {
+    console.error("Error updating persona:", error)
+    return null
+  }
+}
+
+export async function deletePersonaFromDB(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("personas").delete().eq("id", id)
 
     if (error) {
       console.error("Error deleting persona:", error)
@@ -73,18 +99,21 @@ export async function deletePersonaFromDB(personaId: string): Promise<boolean> {
   }
 }
 
-export async function getPersonaFromDB(personaId: string): Promise<PersonaConfig | null> {
+export async function getPersonaFromDB(id: string): Promise<PersonaConfig | null> {
   try {
-    const { data, error } = await supabase.from("personas").select("*").eq("id", personaId).single()
+    const { data, error } = await supabase.from("personas").select("*").eq("id", id).single()
 
     if (error) {
       console.error("Error getting persona:", error)
       return null
     }
 
-    return dbRowToPersonaConfig(data)
+    return data
   } catch (error) {
     console.error("Error getting persona:", error)
     return null
   }
 }
+
+// Legacy functions for backward compatibility
+export const loadPersonasFromDB = getAllPersonasFromDB
