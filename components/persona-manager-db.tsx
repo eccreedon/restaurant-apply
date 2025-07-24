@@ -2,8 +2,15 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -29,17 +36,92 @@ import {
   iconMap,
   type PersonaConfig,
 } from "@/lib/persona-db"
+import { toast } from "@/hooks/use-toast"
 
 interface PersonaManagerDBProps {
   onPersonasChange?: () => void
 }
 
+const iconCategories = {
+  General: ["User", "UserCheck", "Settings", "Briefcase", "GraduationCap"],
+  "Food Service": [
+    "ChefHat",
+    "UtensilsCrossed",
+    "Utensils",
+    "Wine",
+    "Coffee",
+    "Pizza",
+    "Soup",
+    "CakeSlice",
+    "IceCream",
+    "Sandwich",
+    "Apple",
+    "Grape",
+    "Cherry",
+    "Banana",
+    "Milk",
+    "Egg",
+    "Carrot",
+    "Croissant",
+    "Donut",
+    "Cookie",
+    "Beef",
+    "Fish",
+    "Wheat",
+    "Salad",
+  ],
+  Healthcare: ["Heart", "Shield", "Stethoscope", "Microscope"],
+  Technology: ["Smartphone", "Laptop", "Database", "Server", "Cloud", "Wifi"],
+  Creative: ["Palette", "Music", "Camera", "Paintbrush", "PenTool"],
+  Business: ["DollarSign", "TrendingUp", "BarChart", "PieChart", "Calculator"],
+  Tools: ["Wrench", "Hammer", "Scissors"],
+  Communication: ["Mail", "Phone", "MessageCircle", "Video"],
+  Other: [
+    "Home",
+    "Building",
+    "Car",
+    "Plane",
+    "TreePine",
+    "Flower",
+    "Sun",
+    "Moon",
+    "Star",
+    "Zap",
+    "Target",
+    "Trophy",
+    "Gift",
+    "Bell",
+    "Clock",
+    "Calendar",
+    "MapPin",
+    "Globe",
+    "Book",
+    "Scale",
+    "Lock",
+    "Key",
+    "Eye",
+    "Search",
+  ],
+}
+
+const colorOptions = [
+  { value: "bg-blue-500", label: "Blue", color: "bg-blue-500" },
+  { value: "bg-green-500", label: "Green", color: "bg-green-500" },
+  { value: "bg-purple-500", label: "Purple", color: "bg-purple-500" },
+  { value: "bg-red-500", label: "Red", color: "bg-red-500" },
+  { value: "bg-yellow-500", label: "Yellow", color: "bg-yellow-500" },
+  { value: "bg-pink-500", label: "Pink", color: "bg-pink-500" },
+  { value: "bg-indigo-500", label: "Indigo", color: "bg-indigo-500" },
+  { value: "bg-gray-500", label: "Gray", color: "bg-gray-500" },
+  { value: "bg-orange-500", label: "Orange", color: "bg-orange-500" },
+  { value: "bg-teal-500", label: "Teal", color: "bg-teal-500" },
+]
+
 export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
   const [personas, setPersonas] = useState<PersonaConfig[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingPersona, setEditingPersona] = useState<PersonaConfig | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   const [formData, setFormData] = useState({
     title: "",
@@ -49,57 +131,6 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
     questions: [""],
   })
 
-  const iconCategories = {
-    "Food Service": [
-      "ChefHat",
-      "UtensilsCrossed",
-      "Utensils",
-      "Wine",
-      "Coffee",
-      "Pizza",
-      "Soup",
-      "CakeSlice",
-      "IceCream",
-      "Sandwich",
-      "Apple",
-      "Grape",
-      "Cherry",
-      "Banana",
-      "Milk",
-      "Egg",
-      "Carrot",
-      "Croissant",
-      "Donut",
-      "Cookie",
-      "Beef",
-      "Fish",
-      "Wheat",
-      "Salad",
-    ],
-    Technology: ["Code", "Smartphone", "Laptop", "Database", "Settings", "Zap", "Globe"],
-    Business: ["Briefcase", "Calculator", "BarChart", "TrendingUp", "Target", "ShoppingCart", "Building"],
-    Creative: ["Palette", "Camera", "Music", "Gamepad2", "Lightbulb"],
-    Healthcare: ["Stethoscope", "Heart", "Brain", "Eye", "Ear"],
-    Education: ["GraduationCap"],
-    Industrial: ["Wrench", "Truck"],
-    Communication: ["MessageCircle", "Phone", "Mail"],
-    Achievement: ["Award", "Star", "Crown", "Gem", "Rocket", "Shield"],
-    General: ["User"],
-  }
-
-  const colorOptions = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-purple-500",
-    "bg-red-500",
-    "bg-yellow-500",
-    "bg-indigo-500",
-    "bg-pink-500",
-    "bg-teal-500",
-    "bg-orange-500",
-    "bg-gray-500",
-  ]
-
   useEffect(() => {
     loadPersonas()
   }, [])
@@ -107,10 +138,15 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
   const loadPersonas = async () => {
     setIsLoading(true)
     try {
-      const personaData = await getAllPersonasFromDB()
-      setPersonas(personaData)
+      const data = await getAllPersonasFromDB()
+      setPersonas(data)
     } catch (error) {
       console.error("Error loading personas:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load personas",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -127,10 +163,24 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
   }
 
   const handleCreatePersona = async () => {
-    if (!formData.title.trim() || !formData.description.trim()) return
+    if (!formData.title.trim() || !formData.description.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      })
+      return
+    }
 
-    const filteredQuestions = formData.questions.filter((q) => q.trim())
-    if (filteredQuestions.length === 0) return
+    const validQuestions = formData.questions.filter((q) => q.trim())
+    if (validQuestions.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add at least one question",
+        variant: "destructive",
+      })
+      return
+    }
 
     try {
       const newPersona = await createPersonaInDB({
@@ -138,7 +188,7 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
         description: formData.description.trim(),
         icon: formData.icon,
         color: formData.color,
-        questions: filteredQuestions,
+        questions: validQuestions,
       })
 
       if (newPersona) {
@@ -146,17 +196,59 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
         onPersonasChange?.()
         setIsCreateDialogOpen(false)
         resetForm()
+        toast({
+          title: "Success",
+          description: "Persona created successfully",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to create persona",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error("Error creating persona:", error)
+      toast({
+        title: "Error",
+        description: "Failed to create persona",
+        variant: "destructive",
+      })
     }
   }
 
-  const handleEditPersona = async () => {
-    if (!editingPersona || !formData.title.trim() || !formData.description.trim()) return
+  const handleEditPersona = (persona: PersonaConfig) => {
+    setEditingPersona(persona)
+    setFormData({
+      title: persona.title,
+      description: persona.description,
+      icon: persona.icon,
+      color: persona.color,
+      questions: persona.questions.length > 0 ? persona.questions : [""],
+    })
+  }
 
-    const filteredQuestions = formData.questions.filter((q) => q.trim())
-    if (filteredQuestions.length === 0) return
+  const handleUpdatePersona = async () => {
+    if (!editingPersona) return
+
+    if (!formData.title.trim() || !formData.description.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const validQuestions = formData.questions.filter((q) => q.trim())
+    if (validQuestions.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add at least one question",
+        variant: "destructive",
+      })
+      return
+    }
 
     try {
       const updatedPersona = await updatePersonaInDB(editingPersona.id, {
@@ -164,18 +256,32 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
         description: formData.description.trim(),
         icon: formData.icon,
         color: formData.color,
-        questions: filteredQuestions,
+        questions: validQuestions,
       })
 
       if (updatedPersona) {
         await loadPersonas()
         onPersonasChange?.()
-        setIsEditDialogOpen(false)
         setEditingPersona(null)
         resetForm()
+        toast({
+          title: "Success",
+          description: "Persona updated successfully",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update persona",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error("Error updating persona:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update persona",
+        variant: "destructive",
+      })
     }
   }
 
@@ -185,46 +291,173 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
       if (success) {
         await loadPersonas()
         onPersonasChange?.()
+        toast({
+          title: "Success",
+          description: "Persona deleted successfully",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete persona",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error("Error deleting persona:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete persona",
+        variant: "destructive",
+      })
     }
   }
 
-  const openEditDialog = (persona: PersonaConfig) => {
-    setEditingPersona(persona)
-    setFormData({
-      title: persona.title,
-      description: persona.description,
-      icon: persona.icon,
-      color: persona.color,
-      questions: persona.questions.length > 0 ? persona.questions : [""],
-    })
-    setIsEditDialogOpen(true)
-  }
-
   const addQuestion = () => {
-    setFormData((prev) => ({
-      ...prev,
-      questions: [...prev.questions, ""],
-    }))
+    setFormData({
+      ...formData,
+      questions: [...formData.questions, ""],
+    })
   }
 
   const updateQuestion = (index: number, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      questions: prev.questions.map((q, i) => (i === index ? value : q)),
-    }))
+    const newQuestions = [...formData.questions]
+    newQuestions[index] = value
+    setFormData({
+      ...formData,
+      questions: newQuestions,
+    })
   }
 
   const removeQuestion = (index: number) => {
     if (formData.questions.length > 1) {
-      setFormData((prev) => ({
-        ...prev,
-        questions: prev.questions.filter((_, i) => i !== index),
-      }))
+      const newQuestions = formData.questions.filter((_, i) => i !== index)
+      setFormData({
+        ...formData,
+        questions: newQuestions,
+      })
     }
   }
+
+  const renderPersonaForm = () => (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="title">Title *</Label>
+        <Input
+          id="title"
+          value={formData.title}
+          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+          placeholder="e.g., Line Cook, Server, Manager"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description *</Label>
+        <Textarea
+          id="description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          placeholder="Brief description of this role..."
+          rows={3}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Icon</Label>
+          <Select value={formData.icon} onValueChange={(value) => setFormData({ ...formData, icon: value })}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {Object.entries(iconCategories).map(([category, icons]) => (
+                <div key={category}>
+                  <div className="px-2 py-1 text-sm font-semibold text-gray-500 bg-gray-50">{category}</div>
+                  {icons.map((iconName) => {
+                    const IconComponent = iconMap[iconName as keyof typeof iconMap] || User
+                    return (
+                      <SelectItem key={iconName} value={iconName}>
+                        <div className="flex items-center gap-2">
+                          <IconComponent className="w-4 h-4" />
+                          {iconName}
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
+                </div>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Color</Label>
+          <Select value={formData.color} onValueChange={(value) => setFormData({ ...formData, color: value })}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {colorOptions.map((color) => (
+                <SelectItem key={color.value} value={color.value}>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded ${color.color}`} />
+                    {color.label}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Label>Questions *</Label>
+          <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
+            <Plus className="w-4 h-4 mr-1" />
+            Add Question
+          </Button>
+        </div>
+        {formData.questions.map((question, index) => (
+          <div key={index} className="flex gap-2">
+            <Textarea
+              value={question}
+              onChange={(e) => updateQuestion(index, e.target.value)}
+              placeholder={`Question ${index + 1}...`}
+              rows={2}
+              className="flex-1"
+            />
+            {formData.questions.length > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => removeQuestion(index)}
+                className="self-start mt-1"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setIsCreateDialogOpen(false)
+            setEditingPersona(null)
+            resetForm()
+          }}
+        >
+          Cancel
+        </Button>
+        <Button onClick={editingPersona ? handleUpdatePersona : handleCreatePersona}>
+          {editingPersona ? "Update" : "Create"} Persona
+        </Button>
+      </div>
+    </div>
+  )
 
   if (isLoading) {
     return (
@@ -238,123 +471,23 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Manage Personas</h2>
+        <div>
+          <h2 className="text-2xl font-bold">Manage Personas</h2>
+          <p className="text-gray-600">Create and manage different roles for your assessments</p>
+        </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
-              <Plus className="mr-2 h-4 w-4" />
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
               Create Persona
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Persona</DialogTitle>
+              <DialogDescription>Create a new role with custom questions for your assessment</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                    placeholder="e.g., Line Cook"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="color">Color</Label>
-                  <Select
-                    value={formData.color}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, color: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {colorOptions.map((color) => (
-                        <SelectItem key={color} value={color}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-4 h-4 rounded ${color}`}></div>
-                            {color.replace("bg-", "").replace("-500", "")}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                  placeholder="Brief description of this role..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="icon">Icon</Label>
-                <Select
-                  value={formData.icon}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, icon: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {Object.entries(iconCategories).map(([category, icons]) => (
-                      <div key={category}>
-                        <div className="px-2 py-1 text-sm font-semibold text-gray-500">{category}</div>
-                        {icons.map((iconName) => {
-                          const IconComponent = iconMap[iconName as keyof typeof iconMap] || User
-                          return (
-                            <SelectItem key={iconName} value={iconName}>
-                              <div className="flex items-center gap-2">
-                                <IconComponent className="h-4 w-4" />
-                                {iconName}
-                              </div>
-                            </SelectItem>
-                          )
-                        })}
-                      </div>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label>Questions</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
-                    Add Question
-                  </Button>
-                </div>
-                {formData.questions.map((question, index) => (
-                  <div key={index} className="flex gap-2">
-                    <Textarea
-                      value={question}
-                      onChange={(e) => updateQuestion(index, e.target.value)}
-                      placeholder={`Question ${index + 1}...`}
-                      className="flex-1"
-                    />
-                    {formData.questions.length > 1 && (
-                      <Button type="button" variant="outline" size="sm" onClick={() => removeQuestion(index)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreatePersona}>Create Persona</Button>
-              </div>
-            </div>
+            {renderPersonaForm()}
           </DialogContent>
         </Dialog>
       </div>
@@ -362,9 +495,13 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
       {personas.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No personas created yet</p>
-            <p className="text-sm text-gray-500">Create your first persona to get started</p>
+            <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No personas yet</h3>
+            <p className="text-gray-600 mb-4">Create your first persona to get started with assessments</p>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create First Persona
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -372,34 +509,52 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
           {personas.map((persona) => {
             const IconComponent = iconMap[persona.icon as keyof typeof iconMap] || User
             return (
-              <Card key={persona.id}>
+              <Card key={persona.id} className="relative">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 ${persona.color} rounded-lg`}>
-                        <IconComponent className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-lg">{persona.title}</CardTitle>
-                        <p className="text-sm text-gray-600">{persona.description}</p>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 ${persona.color} rounded-lg flex items-center justify-center`}>
+                      <IconComponent className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">{persona.title}</CardTitle>
+                      <CardDescription className="text-sm">{persona.description}</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <Badge variant="secondary">{persona.questions.length} questions</Badge>
-
+                    <div className="flex items-center justify-between">
+                      <Badge variant="secondary">{persona.questions.length} questions</Badge>
+                    </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => openEditDialog(persona)}>
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
+                      <Dialog
+                        open={editingPersona?.id === persona.id}
+                        onOpenChange={(open) => {
+                          if (!open) {
+                            setEditingPersona(null)
+                            resetForm()
+                          }
+                        }}
+                      >
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" onClick={() => handleEditPersona(persona)}>
+                            <Edit className="w-4 h-4 mr-1" />
+                            Edit
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Edit Persona</DialogTitle>
+                            <DialogDescription>Update the persona details and questions</DialogDescription>
+                          </DialogHeader>
+                          {renderPersonaForm()}
+                        </DialogContent>
+                      </Dialog>
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="outline" size="sm">
-                            <Trash2 className="h-4 w-4 mr-1" />
+                            <Trash2 className="w-4 h-4 mr-1" />
                             Delete
                           </Button>
                         </AlertDialogTrigger>
@@ -426,120 +581,6 @@ export function PersonaManagerDB({ onPersonasChange }: PersonaManagerDBProps) {
           })}
         </div>
       )}
-
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Persona</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-title">Title</Label>
-                <Input
-                  id="edit-title"
-                  value={formData.title}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="e.g., Line Cook"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-color">Color</Label>
-                <Select
-                  value={formData.color}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, color: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {colorOptions.map((color) => (
-                      <SelectItem key={color} value={color}>
-                        <div className="flex items-center gap-2">
-                          <div className={`w-4 h-4 rounded ${color}`}></div>
-                          {color.replace("bg-", "").replace("-500", "")}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">Description</Label>
-              <Textarea
-                id="edit-description"
-                value={formData.description}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Brief description of this role..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-icon">Icon</Label>
-              <Select
-                value={formData.icon}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, icon: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {Object.entries(iconCategories).map(([category, icons]) => (
-                    <div key={category}>
-                      <div className="px-2 py-1 text-sm font-semibold text-gray-500">{category}</div>
-                      {icons.map((iconName) => {
-                        const IconComponent = iconMap[iconName as keyof typeof iconMap] || User
-                        return (
-                          <SelectItem key={iconName} value={iconName}>
-                            <div className="flex items-center gap-2">
-                              <IconComponent className="h-4 w-4" />
-                              {iconName}
-                            </div>
-                          </SelectItem>
-                        )
-                      })}
-                    </div>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label>Questions</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
-                  Add Question
-                </Button>
-              </div>
-              {formData.questions.map((question, index) => (
-                <div key={index} className="flex gap-2">
-                  <Textarea
-                    value={question}
-                    onChange={(e) => updateQuestion(index, e.target.value)}
-                    placeholder={`Question ${index + 1}...`}
-                    className="flex-1"
-                  />
-                  {formData.questions.length > 1 && (
-                    <Button type="button" variant="outline" size="sm" onClick={() => removeQuestion(index)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleEditPersona}>Save Changes</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

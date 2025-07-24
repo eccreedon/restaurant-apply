@@ -9,6 +9,7 @@ import { Copy, Users, FileText, TrendingUp, Phone, Mail, Calendar, User } from "
 import { getAllPersonasFromDB, iconMap, type PersonaConfig } from "@/lib/persona-db"
 import { getAllResponses, type ResponseData } from "@/lib/responses-db"
 import { PersonaManagerDB } from "@/components/persona-manager-db"
+import { toast } from "@/hooks/use-toast"
 
 export default function AdminDashboard() {
   const [personas, setPersonas] = useState<PersonaConfig[]>([])
@@ -27,6 +28,11 @@ export default function AdminDashboard() {
       setResponses(responseData)
     } catch (error) {
       console.error("Error loading data:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load dashboard data",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -35,7 +41,10 @@ export default function AdminDashboard() {
   const copyAssessmentUrl = () => {
     const url = window.location.origin
     navigator.clipboard.writeText(url)
-    alert("Assessment URL copied to clipboard!")
+    toast({
+      title: "URL Copied!",
+      description: "Assessment URL has been copied to your clipboard.",
+    })
   }
 
   const formatDate = (dateString: string) => {

@@ -1,8 +1,7 @@
 import { supabase } from "./supabase"
-import { analyzeAnswers, type AnalysisResult } from "./ai-analysis"
+import { analyzeResponses } from "./ai-analysis"
 
 export interface ResponseData {
-  id?: string
   first_name: string
   last_name: string
   email: string
@@ -10,83 +9,84 @@ export interface ResponseData {
   persona: string
   questions: string[]
   answers: string[]
-  analysis?: AnalysisResult
-  created_at?: string
 }
 
-export async function saveResponse(responseData: ResponseData): Promise<{ success: boolean; error?: string }> {
+export interface SaveResponseResult {
+  success: boolean
+  error?: string
+  id?: string
+}
+
+export async function saveResponse(responseData: ResponseData): Promise<SaveResponseResult> {
   try {
-    console.log("Starting to save response for:", responseData.first_name, responseData.last_name)
+    console.log("Saving response to database...", responseData)
 
-    // Validate required fields
-    if (!responseData.first_name?.trim()) {
-      throw new Error("First name is required")
-    }
-    if (!responseData.last_name?.trim()) {
-      throw new Error("Last name is required")
-    }
-    if (!responseData.email?.trim()) {
-      throw new Error("Email is required")
-    }
-    if (!responseData.persona?.trim()) {
-      throw new Error("Persona is required")
-    }
-    if (!responseData.questions?.length) {
-      throw new Error("Questions are required")
-    }
-    if (!responseData.answers?.length) {
-      throw new Error("Answers are required")
-    }
+    // First, save the response without analysis
+    const { data: savedResponse, error: saveError } = await supabase
+      .from("responses")
+      .insert([
+        {
+          first_name: responseData.first_name,
+          last_name: responseData.last_name,
+          email: responseData.email,
+          phone: responseData.phone || null,
+          persona: responseData.persona,
+          questions: responseData.questions,
+          answers: responseData.answers,
+          analysis: null, // Will be updated after AI analysis
+        },
+      ])
+      .select()
+      .single()
 
-    console.log("Validation passed, performing AI analysis...")
-
-    // Get AI analysis
-    const analysis = await analyzeAnswers(responseData.questions, responseData.answers, responseData.persona)
-    console.log("AI analysis completed:", analysis)
-
-    // Prepare data for database
-    const dbData = {
-      first_name: responseData.first_name.trim(),
-      last_name: responseData.last_name.trim(),
-      email: responseData.email.trim(),
-      phone: responseData.phone?.trim() || null,
-      persona: responseData.persona.trim(),
-      questions: responseData.questions,
-      answers: responseData.answers,
-      analysis: analysis,
-      created_at: new Date().toISOString(),
+    if (saveError) {
+      console.error("Database save error:", saveError)
+      return {
+        success: false,
+        error: `Database error: ${saveError.message}`,
+      }
     }
 
-    console.log("Saving to database with data:", dbData)
+    console.log("Response saved successfully:", savedResponse.id)
 
-    // Save to database
-    const { data, error } = await supabase.from("responses").insert([dbData]).select()
+    // Now perform AI analysis in the background
+    try {
+      console.log("Starting AI analysis...")
+      const analysis = await analyzeResponses(responseData.persona, responseData.questions, responseData.answers)
 
-    if (error) {
-      console.error("Supabase error:", error)
-      throw new Error(`Database error: ${error.message}`)
+      if (analysis) {
+        console.log("AI analysis completed, updating database...")
+        const { error: updateError } = await supabase.from("responses").update({ analysis }).eq("id", savedResponse.id)
+
+        if (updateError) {
+          console.error("Error updating analysis:", updateError)
+          // Don't fail the entire operation if analysis update fails
+        } else {
+          console.log("Analysis saved successfully")
+        }
+      } else {
+        console.log("AI analysis failed, but response was saved")
+      }
+    } catch (analysisError) {
+      console.error("AI analysis error:", analysisError)
+      // Don't fail the entire operation if analysis fails
     }
 
-    if (!data || data.length === 0) {
-      throw new Error("No data returned from database insert")
+    return {
+      success: true,
+      id: savedResponse.id,
     }
-
-    console.log("Response saved successfully:", data[0])
-    return { success: true }
   } catch (error) {
-    console.error("Error saving response:", error)
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+    console.error("Unexpected error in saveResponse:", error)
     return {
       success: false,
-      error: errorMessage,
+      error: "An unexpected error occurred while saving your response.",
     }
   }
 }
 
-export async function getAllResponses(): Promise<ResponseData[]> {
+export async function getAllResponses() {
   try {
-    console.log("Fetching all responses from database...")
-
     const { data, error } = await supabase.from("responses").select("*").order("created_at", { ascending: false })
 
     if (error) {
@@ -94,10 +94,41 @@ export async function getAllResponses(): Promise<ResponseData[]> {
       throw error
     }
 
-    console.log(`Fetched ${data?.length || 0} responses`)
     return data || []
   } catch (error) {
     console.error("Error in getAllResponses:", error)
     return []
+  }
+}
+
+export async function getResponseById(id: string) {
+  try {
+    const { data, error } = await supabase.from("responses").select("*").eq("id", id).single()
+
+    if (error) {
+      console.error("Error fetching response:", error)
+      throw error
+    }
+
+    return data
+  } catch (error) {
+    console.error("Error in getResponseById:", error)
+    return null
+  }
+}
+
+export async function deleteResponse(id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("responses").delete().eq("id", id)
+
+    if (error) {
+      console.error("Error deleting response:", error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error("Error in deleteResponse:", error)
+    return false
   }
 }
