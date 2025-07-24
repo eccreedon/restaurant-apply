@@ -7,8 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ArrowLeft, ArrowRight, CheckCircle, Loader2, AlertCircle } from "lucide-react"
+import { ArrowLeft, ArrowRight, CheckCircle, Loader2 } from "lucide-react"
 import { getAllPersonasFromDB, type PersonaConfig } from "@/lib/persona-db"
 import { saveResponse } from "@/lib/responses-db"
 import { analyzeAnswers } from "@/lib/ai-analysis"
@@ -48,7 +47,6 @@ export default function AssessmentPage() {
   const [currentStep, setCurrentStep] = useState<Step>("info")
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   // Form data
   const [respondentInfo, setRespondentInfo] = useState({
@@ -66,22 +64,17 @@ export default function AssessmentPage() {
 
   const loadPersonas = async () => {
     setIsLoading(true)
-    setError(null)
     try {
-      console.log("Loading personas...")
       const personasData = await getAllPersonasFromDB()
-      console.log("Loaded personas:", personasData.length)
       setPersonas(personasData)
     } catch (error) {
       console.error("Error loading personas:", error)
-      setError("Failed to load assessment. Please refresh the page.")
     } finally {
       setIsLoading(false)
     }
   }
 
   const handlePersonaSelect = (persona: PersonaConfig) => {
-    console.log("Selected persona:", persona.title)
     setSelectedPersona(persona)
     setAnswers(new Array(persona.questions.length).fill(""))
     setCurrentStep("questionnaire")
@@ -106,28 +99,15 @@ export default function AssessmentPage() {
   }
 
   const handleSubmit = async () => {
-    if (!selectedPersona) {
-      setError("No persona selected")
-      return
-    }
+    if (!selectedPersona) return
 
     setIsSubmitting(true)
-    setError(null)
-
     try {
-      console.log("Starting submission process...")
-      console.log("Respondent info:", respondentInfo)
-      console.log("Selected persona:", selectedPersona.title)
-      console.log("Answers:", answers)
-
       // Generate AI analysis
-      console.log("Generating AI analysis...")
       const analysis = await analyzeAnswers(selectedPersona.questions, answers, selectedPersona.title)
-      console.log("AI analysis completed:", analysis)
 
       // Save response to database
-      console.log("Saving response to database...")
-      const savedResponse = await saveResponse({
+      await saveResponse({
         persona_id: selectedPersona.id,
         respondent_first_name: respondentInfo.firstName,
         respondent_last_name: respondentInfo.lastName,
@@ -137,15 +117,9 @@ export default function AssessmentPage() {
         ai_analysis: analysis.summary,
       })
 
-      if (!savedResponse) {
-        throw new Error("Failed to save response")
-      }
-
-      console.log("Response saved successfully:", savedResponse.id)
       setCurrentStep("complete")
     } catch (error) {
       console.error("Error submitting assessment:", error)
-      setError("Failed to submit assessment. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -166,21 +140,6 @@ export default function AssessmentPage() {
     )
   }
 
-  if (error && personas.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <Card className="max-w-md">
-          <CardContent className="p-6 text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Assessment Unavailable</h2>
-            <p className="text-slate-600 mb-4">{error}</p>
-            <Button onClick={loadPersonas}>Try Again</Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
       <div className="container mx-auto px-4 max-w-2xl">
@@ -189,14 +148,6 @@ export default function AssessmentPage() {
           <h1 className="text-4xl font-bold mb-2">Skills Assessment</h1>
           <p className="text-slate-600">Choose your role and complete the questionnaire</p>
         </div>
-
-        {/* Error Alert */}
-        {error && (
-          <Alert className="mb-6 border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">{error}</AlertDescription>
-          </Alert>
-        )}
 
         {/* Step: Respondent Info */}
         {currentStep === "info" && (
