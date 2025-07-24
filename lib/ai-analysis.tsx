@@ -1,25 +1,29 @@
-import { anthropic } from "@ai-sdk/anthropic"
-import { generateText } from "ai"
+import Anthropic from "@anthropic-ai/sdk"
 
 export interface AnalysisResult {
   summary: string
   strengths: string[]
   concerns: string[]
-  recommendations: string[]
+  recommendation: string
 }
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+})
 
 export async function analyzeAnswers(questions: string[], answers: string[], persona: string): Promise<AnalysisResult> {
   try {
-    const prompt = `
-You are an expert hiring manager analyzing responses for a ${persona} position. 
+    console.log("Starting AI analysis for persona:", persona)
+
+    const prompt = `You are an expert HR professional analyzing responses for a ${persona} position. 
 
 Questions and Answers:
-${questions.map((q, i) => `Q${i + 1}: ${q}\nA${i + 1}: ${answers[i] || "No answer provided"}`).join("\n\n")}
+${questions.map((q, i) => `Q${i + 1}: ${q}\nA${i + 1}: ${answers[i] || "No response"}`).join("\n\n")}
 
 Please provide a comprehensive analysis in the following format:
 
 SUMMARY:
-[2-3 sentence overall assessment of the candidate]
+[2-3 sentences summarizing the candidate's overall suitability for the ${persona} role]
 
 STRENGTHS:
 - [Key strength 1]
@@ -30,48 +34,58 @@ CONCERNS:
 - [Concern 1 if any]
 - [Concern 2 if any]
 
-RECOMMENDATIONS:
-- [Recommendation 1]
-- [Recommendation 2]
+RECOMMENDATION:
+[Clear recommendation: Highly Recommended, Recommended, Consider with Reservations, or Not Recommended]`
 
-Keep the analysis professional, constructive, and specific to the ${persona} role.
-`
-
-    const { text } = await generateText({
-      model: anthropic("claude-3-haiku-20240307"),
-      prompt,
-      maxTokens: 1000,
+    const response = await anthropic.messages.create({
+      model: "claude-3-sonnet-20240229",
+      max_tokens: 1000,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
     })
 
-    // Parse the response into structured format
-    const sections = text.split(/(?:SUMMARY:|STRENGTHS:|CONCERNS:|RECOMMENDATIONS:)/i)
+    const analysisText = response.content[0].type === "text" ? response.content[0].text : ""
+    console.log("AI analysis completed")
 
-    const summary = sections[1]?.trim() || text.substring(0, 200) + "..."
+    // Parse the response into structured format
+    const sections = analysisText.split(/(?:SUMMARY:|STRENGTHS:|CONCERNS:|RECOMMENDATION:)/i)
+
+    const summary = sections[1]?.trim() || analysisText
     const strengthsText = sections[2]?.trim() || ""
     const concernsText = sections[3]?.trim() || ""
-    const recommendationsText = sections[4]?.trim() || ""
+    const recommendation = sections[4]?.trim() || "Analysis pending"
 
-    const parseList = (text: string): string[] => {
-      return text
-        .split("\n")
-        .map((line) => line.replace(/^[-•*]\s*/, "").trim())
-        .filter((line) => line.length > 0)
-        .slice(0, 5) // Limit to 5 items
-    }
+    const strengths = strengthsText
+      .split("\n")
+      .filter((line) => line.trim().startsWith("-"))
+      .map((line) => line.replace(/^-\s*/, "").trim())
+      .filter(Boolean)
+
+    const concerns = concernsText
+      .split("\n")
+      .filter((line) => line.trim().startsWith("-"))
+      .map((line) => line.replace(/^-\s*/, "").trim())
+      .filter(Boolean)
 
     return {
       summary,
-      strengths: parseList(strengthsText),
-      concerns: parseList(concernsText),
-      recommendations: parseList(recommendationsText),
+      strengths,
+      concerns,
+      recommendation,
     }
   } catch (error) {
-    console.error("Error analyzing answers:", error)
+    console.error("Error in AI analysis:", error)
+
+    // Return a fallback analysis
     return {
-      summary: "Analysis could not be completed at this time.",
-      strengths: [],
-      concerns: [],
-      recommendations: ["Please review responses manually."],
+      summary: `Candidate has completed the ${persona} assessment. Manual review recommended.`,
+      strengths: ["Completed all required questions", "Showed engagement with the process"],
+      concerns: ["AI analysis temporarily unavailable"],
+      recommendation: "Manual Review Required",
     }
   }
 }
