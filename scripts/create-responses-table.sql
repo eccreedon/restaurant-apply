@@ -1,23 +1,18 @@
--- Create responses table for storing assessment responses
+-- Create responses table
 CREATE TABLE IF NOT EXISTS responses (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  persona_id TEXT NOT NULL,
-  respondent_first_name TEXT NOT NULL,
-  respondent_last_name TEXT NOT NULL,
-  respondent_email TEXT NOT NULL,
-  respondent_phone TEXT,
-  responses TEXT[] NOT NULL,
-  ai_analysis TEXT,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  persona TEXT NOT NULL,
+  questions TEXT[] NOT NULL,
+  answers TEXT[] NOT NULL,
+  analysis JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create index for faster queries
-CREATE INDEX IF NOT EXISTS idx_responses_persona_id ON responses(persona_id);
-CREATE INDEX IF NOT EXISTS idx_responses_created_at ON responses(created_at);
-
--- Enable RLS (Row Level Security)
-ALTER TABLE responses ENABLE ROW LEVEL SECURITY;
-
--- Create policy to allow all operations (you can restrict this later)
-CREATE POLICY "Allow all operations on responses" ON responses
-  FOR ALL USING (true);
+CREATE INDEX IF NOT EXISTS idx_responses_created_at ON responses(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_responses_persona ON responses(persona);
+CREATE INDEX IF NOT EXISTS idx_responses_email ON responses(email);

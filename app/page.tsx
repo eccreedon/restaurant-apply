@@ -1,83 +1,63 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, ArrowRight, CheckCircle, Loader2 } from "lucide-react"
-import { getAllPersonasFromDB, type PersonaConfig } from "@/lib/persona-db"
+import { CheckCircle, ArrowRight, ArrowLeft, User } from "lucide-react"
+import { getAllPersonasFromDB, iconMap, type PersonaConfig } from "@/lib/persona-db"
 import { saveResponse } from "@/lib/responses-db"
-import { analyzeAnswers } from "@/lib/ai-analysis"
-
-export type Persona = string
-export type PersonaIcon = string
-
-export interface QuestionnaireData {
-  persona: Persona
-  answers: string[]
-  aiSummary?: string
-}
-
-export interface Assessment {
-  id: string
-  title: string
-  persona: Persona
-  createdAt: string
-  shareableLink: string
-  responses: AssessmentResponse[]
-}
-
-export interface AssessmentResponse {
-  id: string
-  assessmentId: string
-  respondentName: string
-  respondentEmail: string
-  completedAt: string
-  data: QuestionnaireData
-}
 
 type Step = "info" | "persona" | "questionnaire" | "complete"
 
+interface RespondentInfo {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+}
+
 export default function AssessmentPage() {
+  const [step, setStep] = useState<Step>("info")
   const [personas, setPersonas] = useState<PersonaConfig[]>([])
   const [selectedPersona, setSelectedPersona] = useState<PersonaConfig | null>(null)
-  const [currentStep, setCurrentStep] = useState<Step>("info")
-  const [isLoading, setIsLoading] = useState(true)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [answers, setAnswers] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  // Form data
-  const [respondentInfo, setRespondentInfo] = useState({
+  const [respondentInfo, setRespondentInfo] = useState<RespondentInfo>({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
   })
-  const [answers, setAnswers] = useState<string[]>([])
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
 
   useEffect(() => {
     loadPersonas()
   }, [])
 
   const loadPersonas = async () => {
-    setIsLoading(true)
     try {
-      const personasData = await getAllPersonasFromDB()
-      setPersonas(personasData)
+      const personaData = await getAllPersonasFromDB()
+      setPersonas(personaData)
     } catch (error) {
       console.error("Error loading personas:", error)
-    } finally {
-      setIsLoading(false)
     }
+  }
+
+  const isInfoComplete = () => {
+    return (
+      respondentInfo.firstName.trim() && respondentInfo.lastName.trim() && respondentInfo.email.trim()
+      // Phone is optional
+    )
   }
 
   const handlePersonaSelect = (persona: PersonaConfig) => {
     setSelectedPersona(persona)
     setAnswers(new Array(persona.questions.length).fill(""))
-    setCurrentStep("questionnaire")
+    setStep("questionnaire")
   }
 
   const handleAnswerChange = (value: string) => {
@@ -86,13 +66,13 @@ export default function AssessmentPage() {
     setAnswers(newAnswers)
   }
 
-  const goToNextQuestion = () => {
-    if (selectedPersona && currentQuestionIndex < selectedPersona.questions.length - 1) {
+  const handleNext = () => {
+    if (currentQuestionIndex < selectedPersona!.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1)
     }
   }
 
-  const goToPreviousQuestion = () => {
+  const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1)
     }
@@ -102,244 +82,229 @@ export default function AssessmentPage() {
     if (!selectedPersona) return
 
     setIsSubmitting(true)
+    console.log("Starting submission process...")
+
     try {
-      // Generate AI analysis
-      const analysis = await analyzeAnswers(selectedPersona.questions, answers, selectedPersona.title)
+      const responseData = {
+        first_name: respondentInfo.firstName,
+        last_name: respondentInfo.lastName,
+        email: respondentInfo.email,
+        phone: respondentInfo.phone || null,
+        persona: selectedPersona.title,
+        questions: selectedPersona.questions,
+        answers: answers,
+      }
 
-      // Save response to database
-      await saveResponse({
-        persona_id: selectedPersona.id,
-        respondent_first_name: respondentInfo.firstName,
-        respondent_last_name: respondentInfo.lastName,
-        respondent_email: respondentInfo.email,
-        respondent_phone: respondentInfo.phone,
-        responses: answers,
-        ai_analysis: analysis.summary,
-      })
+      console.log("Submitting response data:", responseData)
 
-      setCurrentStep("complete")
+      const result = await saveResponse(responseData)
+
+      if (result.success) {
+        console.log("Response saved successfully!")
+        setStep("complete")
+      } else {
+        console.error("Failed to save response:", result.error)
+        alert(`Failed to save your response: ${result.error}`)
+      }
     } catch (error) {
-      console.error("Error submitting assessment:", error)
+      console.error("Error during submission:", error)
+      alert("An error occurred while saving your response. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const isInfoComplete = () => {
-    return respondentInfo.firstName.trim() && respondentInfo.lastName.trim() && respondentInfo.email.trim()
+  const currentQuestion = selectedPersona?.questions[currentQuestionIndex]
+  const currentAnswer = answers[currentQuestionIndex] || ""
+  const isLastQuestion = currentQuestionIndex === (selectedPersona?.questions.length || 0) - 1
+
+  if (step === "info") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold">Welcome to Our Assessment</CardTitle>
+            <CardDescription>Please provide your contact information to get started</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name *</Label>
+                <Input
+                  id="firstName"
+                  value={respondentInfo.firstName}
+                  onChange={(e) => setRespondentInfo((prev) => ({ ...prev, firstName: e.target.value }))}
+                  placeholder="Enter your first name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name *</Label>
+                <Input
+                  id="lastName"
+                  value={respondentInfo.lastName}
+                  onChange={(e) => setRespondentInfo((prev) => ({ ...prev, lastName: e.target.value }))}
+                  placeholder="Enter your last name"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={respondentInfo.email}
+                onChange={(e) => setRespondentInfo((prev) => ({ ...prev, email: e.target.value }))}
+                placeholder="Enter your email address"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={respondentInfo.phone}
+                onChange={(e) => setRespondentInfo((prev) => ({ ...prev, phone: e.target.value }))}
+                placeholder="Enter your phone number (optional)"
+              />
+            </div>
+            <Button onClick={() => setStep("persona")} className="w-full" disabled={!isInfoComplete()}>
+              Continue <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
-  if (isLoading) {
+  if (step === "persona") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="flex items-center gap-2">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span>Loading assessment...</span>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Choose Your Role</h1>
+            <p className="text-gray-600">Select the position you're interested in applying for</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {personas.map((persona) => {
+              const IconComponent = iconMap[persona.icon as keyof typeof iconMap] || User
+              return (
+                <Card
+                  key={persona.id}
+                  className="cursor-pointer hover:shadow-lg transition-shadow duration-200 hover:border-blue-300"
+                  onClick={() => handlePersonaSelect(persona)}
+                >
+                  <CardHeader className="text-center">
+                    <div className="mx-auto mb-4 p-3 bg-blue-100 rounded-full w-fit">
+                      <IconComponent className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <CardTitle className="text-xl">{persona.title}</CardTitle>
+                    <CardDescription className="text-sm">{persona.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Badge variant="secondary" className="w-full justify-center">
+                      {persona.questions.length} Questions
+                    </Badge>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+
+          <div className="text-center mt-8">
+            <Button variant="outline" onClick={() => setStep("info")}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            </Button>
+          </div>
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8">
-      <div className="container mx-auto px-4 max-w-2xl">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">Skills Assessment</h1>
-          <p className="text-slate-600">Choose your role and complete the questionnaire</p>
-        </div>
+  if (step === "questionnaire" && selectedPersona) {
+    const IconComponent = iconMap[selectedPersona.icon as keyof typeof iconMap] || User
 
-        {/* Step: Respondent Info */}
-        {currentStep === "info" && (
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-blue-100 rounded-full">
+                <IconComponent className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{selectedPersona.title} Assessment</h1>
+                <p className="text-gray-600">
+                  Question {currentQuestionIndex + 1} of {selectedPersona.questions.length}
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${((currentQuestionIndex + 1) / selectedPersona.questions.length) * 100}%` }}
+              />
+            </div>
+          </div>
+
           <Card>
             <CardHeader>
-              <CardTitle>Your Information</CardTitle>
-              <p className="text-slate-600">Please provide your contact information to get started</p>
+              <CardTitle className="text-lg">{currentQuestion}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">First Name *</Label>
-                  <Input
-                    id="firstName"
-                    value={respondentInfo.firstName}
-                    onChange={(e) => setRespondentInfo((prev) => ({ ...prev, firstName: e.target.value }))}
-                    placeholder="Enter your first name"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lastName">Last Name *</Label>
-                  <Input
-                    id="lastName"
-                    value={respondentInfo.lastName}
-                    onChange={(e) => setRespondentInfo((prev) => ({ ...prev, lastName: e.target.value }))}
-                    placeholder="Enter your last name"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="email">Email Address *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={respondentInfo.email}
-                  onChange={(e) => setRespondentInfo((prev) => ({ ...prev, email: e.target.value }))}
-                  placeholder="Enter your email address"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={respondentInfo.phone}
-                  onChange={(e) => setRespondentInfo((prev) => ({ ...prev, phone: e.target.value }))}
-                  placeholder="Enter your phone number (optional)"
-                />
-              </div>
-              <Button onClick={() => setCurrentStep("persona")} disabled={!isInfoComplete()} className="w-full">
-                Continue
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step: Persona Selection */}
-        {currentStep === "persona" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Choose Your Role</CardTitle>
-              <p className="text-slate-600">Select the position that best matches your role or interest:</p>
-            </CardHeader>
-            <CardContent>
-              {personas.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-slate-600">No roles available. Please contact the administrator.</p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {personas.map((persona) => (
-                    <Card
-                      key={persona.id}
-                      className="cursor-pointer hover:shadow-lg transition-shadow border-2 hover:border-blue-200"
-                      onClick={() => handlePersonaSelect(persona)}
-                    >
-                      <CardContent className="p-6">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div
-                            className={`w-10 h-10 ${persona.color} rounded-lg flex items-center justify-center text-white`}
-                          >
-                            <span className="text-lg">{persona.icon}</span>
-                          </div>
-                          <div>
-                            <h3 className="font-semibold">{persona.title}</h3>
-                            <p className="text-sm text-slate-600">{persona.description}</p>
-                          </div>
-                        </div>
-                        <Badge variant="secondary">{persona.questions.length} questions</Badge>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-              <Button variant="outline" onClick={() => setCurrentStep("info")} className="mt-4">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step: Questionnaire */}
-        {currentStep === "questionnaire" && selectedPersona && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-8 h-8 ${selectedPersona.color} rounded-lg flex items-center justify-center text-white`}
-                  >
-                    <span>{selectedPersona.icon}</span>
-                  </div>
-                  <div>
-                    <CardTitle>{selectedPersona.title}</CardTitle>
-                    <p className="text-sm text-slate-600">
-                      Question {currentQuestionIndex + 1} of {selectedPersona.questions.length}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="w-full bg-slate-200 rounded-full h-2">
-                <div
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                  style={{
-                    width: `${((currentQuestionIndex + 1) / selectedPersona.questions.length) * 100}%`,
-                  }}
-                ></div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <Label className="text-base font-medium">{selectedPersona.questions[currentQuestionIndex]}</Label>
-                <Textarea
-                  value={answers[currentQuestionIndex] || ""}
-                  onChange={(e) => handleAnswerChange(e.target.value)}
-                  placeholder="Share your thoughts and experiences..."
-                  className="mt-2 min-h-[120px]"
-                />
-              </div>
+              <Textarea
+                value={currentAnswer}
+                onChange={(e) => handleAnswerChange(e.target.value)}
+                placeholder="Type your answer here..."
+                className="min-h-[120px]"
+              />
 
               <div className="flex justify-between">
-                <Button variant="outline" onClick={goToPreviousQuestion} disabled={currentQuestionIndex === 0}>
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Previous
+                <Button variant="outline" onClick={handlePrevious} disabled={currentQuestionIndex === 0}>
+                  <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                 </Button>
 
-                {currentQuestionIndex === selectedPersona.questions.length - 1 ? (
-                  <Button onClick={handleSubmit} disabled={!answers[currentQuestionIndex]?.trim() || isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        Submit Assessment
-                        <CheckCircle className="w-4 h-4 ml-2" />
-                      </>
-                    )}
+                {isLastQuestion ? (
+                  <Button onClick={handleSubmit} disabled={!currentAnswer.trim() || isSubmitting}>
+                    {isSubmitting ? "Submitting..." : "Submit Assessment"}
                   </Button>
                 ) : (
-                  <Button onClick={goToNextQuestion} disabled={!answers[currentQuestionIndex]?.trim()}>
-                    Next
-                    <ArrowRight className="w-4 h-4 ml-2" />
+                  <Button onClick={handleNext} disabled={!currentAnswer.trim()}>
+                    Next <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 )}
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {/* Step: Complete */}
-        {currentStep === "complete" && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-              <h2 className="text-2xl font-semibold mb-2">Assessment Complete!</h2>
-              <p className="text-slate-600 mb-4">
-                Thank you for completing the assessment. Your responses have been submitted successfully.
-              </p>
-              <p className="text-sm text-slate-500">
-                The hiring team will review your responses and get back to you soon.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
+
+  if (step === "complete") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="mx-auto mb-4 p-3 bg-green-100 rounded-full w-fit">
+              <CheckCircle className="h-12 w-12 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-green-800">Assessment Complete!</CardTitle>
+            <CardDescription className="text-green-700">
+              Thank you for completing the {selectedPersona?.title} assessment. We'll review your responses and get back
+              to you soon.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600">
+              You can now close this window. We have your contact information and will reach out to you.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return null
 }

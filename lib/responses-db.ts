@@ -1,85 +1,87 @@
 import { supabase } from "./supabase"
+import { analyzeAnswers, type AnalysisResult } from "./ai-analysis"
 
-export interface Response {
-  id: string
-  persona_id: string
-  respondent_first_name: string
-  respondent_last_name: string
-  respondent_email: string
-  respondent_phone: string
-  responses: string[]
-  ai_analysis?: string
-  created_at: string
+export interface ResponseData {
+  id?: string
+  first_name: string
+  last_name: string
+  email: string
+  phone?: string
+  persona: string
+  questions: string[]
+  answers: string[]
+  analysis?: AnalysisResult
+  created_at?: string
 }
 
-export async function saveResponse(data: {
-  persona_id: string
-  respondent_first_name: string
-  respondent_last_name: string
-  respondent_email: string
-  respondent_phone: string
-  responses: string[]
-  ai_analysis?: string
-}): Promise<Response | null> {
+export async function saveResponse(responseData: ResponseData): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data: response, error } = await supabase
-      .from("responses")
-      .insert({
-        persona_id: data.persona_id,
-        respondent_first_name: data.respondent_first_name,
-        respondent_last_name: data.respondent_last_name,
-        respondent_email: data.respondent_email,
-        respondent_phone: data.respondent_phone,
-        responses: data.responses,
-        ai_analysis: data.ai_analysis,
-      })
-      .select()
-      .single()
+    console.log("Starting to save response for:", responseData.first_name, responseData.last_name)
 
-    if (error) {
-      console.error("Error saving response:", error)
-      return null
+    // Validate required fields
+    if (!responseData.first_name?.trim() || !responseData.last_name?.trim() || !responseData.email?.trim()) {
+      throw new Error("Missing required fields: first_name, last_name, or email")
     }
 
-    return response
+    if (!responseData.persona || !responseData.questions?.length || !responseData.answers?.length) {
+      throw new Error("Missing required fields: persona, questions, or answers")
+    }
+
+    console.log("Performing AI analysis...")
+
+    // Get AI analysis
+    const analysis = await analyzeAnswers(responseData.questions, responseData.answers, responseData.persona)
+    console.log("AI analysis completed:", analysis)
+
+    // Prepare data for database
+    const dbData = {
+      first_name: responseData.first_name.trim(),
+      last_name: responseData.last_name.trim(),
+      email: responseData.email.trim(),
+      phone: responseData.phone?.trim() || null,
+      persona: responseData.persona,
+      questions: responseData.questions,
+      answers: responseData.answers,
+      analysis: analysis,
+      created_at: new Date().toISOString(),
+    }
+
+    console.log("Saving to database...")
+
+    // Save to database
+    const { data, error } = await supabase.from("responses").insert([dbData]).select()
+
+    if (error) {
+      console.error("Database error:", error)
+      throw error
+    }
+
+    console.log("Response saved successfully:", data)
+    return { success: true }
   } catch (error) {
     console.error("Error saving response:", error)
-    return null
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    }
   }
 }
 
-export async function getAllResponses(): Promise<Response[]> {
+export async function getAllResponses(): Promise<ResponseData[]> {
   try {
+    console.log("Fetching all responses from database...")
+
     const { data, error } = await supabase.from("responses").select("*").order("created_at", { ascending: false })
 
     if (error) {
-      console.error("Error getting responses:", error)
-      return []
+      console.error("Error fetching responses:", error)
+      throw error
     }
 
+    console.log(`Fetched ${data?.length || 0} responses`)
     return data || []
   } catch (error) {
-    console.error("Error getting responses:", error)
-    return []
-  }
-}
-
-export async function getResponsesByPersona(personaId: string): Promise<Response[]> {
-  try {
-    const { data, error } = await supabase
-      .from("responses")
-      .select("*")
-      .eq("persona_id", personaId)
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      console.error("Error getting responses by persona:", error)
-      return []
-    }
-
-    return data || []
-  } catch (error) {
-    console.error("Error getting responses by persona:", error)
+    console.error("Error in getAllResponses:", error)
     return []
   }
 }

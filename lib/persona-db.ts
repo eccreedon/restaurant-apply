@@ -1,119 +1,228 @@
 import { supabase } from "./supabase"
+import {
+  User,
+  Briefcase,
+  Code,
+  Palette,
+  TrendingUp,
+  Users,
+  Shield,
+  Wrench,
+  GraduationCap,
+  Heart,
+  Building,
+  Truck,
+  ChefHat,
+  UtensilsCrossed,
+  Utensils,
+  Wine,
+  Coffee,
+  Pizza,
+  Soup,
+  CakeSlice,
+  IceCream,
+  Sandwich,
+  Apple,
+  Grape,
+  Cherry,
+  Banana,
+  Milk,
+  Egg,
+  Carrot,
+  Croissant,
+  Cookie,
+  Beef,
+  Fish,
+  Wheat,
+  Salad,
+} from "lucide-react"
 
 export interface PersonaConfig {
   id: string
   title: string
   description: string
   icon: string
-  color: string
   questions: string[]
-  created_at?: string
-  updated_at?: string
+}
+
+export const iconMap = {
+  // Professional
+  User,
+  Briefcase,
+  Code,
+  Palette,
+  TrendingUp,
+  Users,
+  Shield,
+  Wrench,
+  GraduationCap,
+  Heart,
+  Building,
+  Truck,
+  // Food Service & Hospitality
+  ChefHat,
+  UtensilsCrossed,
+  Utensils,
+  Wine,
+  Coffee,
+  Pizza,
+  Soup,
+  CakeSlice,
+  IceCream,
+  Sandwich,
+  Apple,
+  Grape,
+  Cherry,
+  Banana,
+  Milk,
+  Egg,
+  Carrot,
+  Croissant,
+  Cookie,
+  Beef,
+  Fish,
+  Wheat,
+  Salad,
+}
+
+export const iconCategories = {
+  Professional: [
+    "User",
+    "Briefcase",
+    "Code",
+    "Palette",
+    "TrendingUp",
+    "Users",
+    "Shield",
+    "Wrench",
+    "GraduationCap",
+    "Heart",
+    "Building",
+    "Truck",
+  ],
+  "Food Service": [
+    "ChefHat",
+    "UtensilsCrossed",
+    "Utensils",
+    "Wine",
+    "Coffee",
+    "Pizza",
+    "Soup",
+    "CakeSlice",
+    "IceCream",
+    "Sandwich",
+    "Apple",
+    "Grape",
+    "Cherry",
+    "Banana",
+    "Milk",
+    "Egg",
+    "Carrot",
+    "Croissant",
+    "Cookie",
+    "Beef",
+    "Fish",
+    "Wheat",
+    "Salad",
+  ],
 }
 
 export async function getAllPersonasFromDB(): Promise<PersonaConfig[]> {
   try {
-    const { data, error } = await supabase.from("personas").select("*").order("created_at", { ascending: false })
+    console.log("Fetching personas from database...")
+
+    const { data, error } = await supabase.from("personas").select("*").order("title")
 
     if (error) {
-      console.error("Error loading personas:", error)
-      return []
+      console.error("Error fetching personas:", error)
+      throw error
     }
 
+    console.log(`Fetched ${data?.length || 0} personas`)
     return data || []
   } catch (error) {
-    console.error("Error loading personas:", error)
+    console.error("Error in getAllPersonasFromDB:", error)
     return []
   }
 }
 
 export async function createPersonaInDB(
-  persona: Omit<PersonaConfig, "id" | "created_at" | "updated_at">,
-): Promise<PersonaConfig | null> {
+  persona: Omit<PersonaConfig, "id">,
+): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log("Creating persona:", persona.title)
+
     const { data, error } = await supabase
       .from("personas")
-      .insert({
-        title: persona.title,
-        description: persona.description,
-        icon: persona.icon,
-        color: persona.color,
-        questions: persona.questions,
-      })
+      .insert([
+        {
+          title: persona.title,
+          description: persona.description,
+          icon: persona.icon,
+          questions: persona.questions,
+        },
+      ])
       .select()
-      .single()
 
     if (error) {
       console.error("Error creating persona:", error)
-      return null
+      throw error
     }
 
-    return data
+    console.log("Persona created successfully:", data)
+    return { success: true }
   } catch (error) {
-    console.error("Error creating persona:", error)
-    return null
+    console.error("Error in createPersonaInDB:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    }
   }
 }
 
-export async function updatePersonaInDB(id: string, updates: Partial<PersonaConfig>): Promise<PersonaConfig | null> {
+export async function updatePersonaInDB(
+  id: string,
+  updates: Partial<PersonaConfig>,
+): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data, error } = await supabase
-      .from("personas")
-      .update({
-        title: updates.title,
-        description: updates.description,
-        icon: updates.icon,
-        color: updates.color,
-        questions: updates.questions,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", id)
-      .select()
-      .single()
+    console.log("Updating persona:", id)
+
+    const { data, error } = await supabase.from("personas").update(updates).eq("id", id).select()
 
     if (error) {
       console.error("Error updating persona:", error)
-      return null
+      throw error
     }
 
-    return data
+    console.log("Persona updated successfully:", data)
+    return { success: true }
   } catch (error) {
-    console.error("Error updating persona:", error)
-    return null
+    console.error("Error in updatePersonaInDB:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    }
   }
 }
 
-export async function deletePersonaFromDB(id: string): Promise<boolean> {
+export async function deletePersonaFromDB(id: string): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log("Deleting persona:", id)
+
     const { error } = await supabase.from("personas").delete().eq("id", id)
 
     if (error) {
       console.error("Error deleting persona:", error)
-      return false
+      throw error
     }
 
-    return true
+    console.log("Persona deleted successfully")
+    return { success: true }
   } catch (error) {
-    console.error("Error deleting persona:", error)
-    return false
-  }
-}
-
-export async function getPersonaFromDB(id: string): Promise<PersonaConfig | null> {
-  try {
-    const { data, error } = await supabase.from("personas").select("*").eq("id", id).single()
-
-    if (error) {
-      console.error("Error getting persona:", error)
-      return null
+    console.error("Error in deletePersonaFromDB:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
     }
-
-    return data
-  } catch (error) {
-    console.error("Error getting persona:", error)
-    return null
   }
 }
-
-// Legacy functions for backward compatibility
-export const loadPersonasFromDB = getAllPersonasFromDB
