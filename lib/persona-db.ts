@@ -1,218 +1,36 @@
 import { supabase } from "./supabase"
 import {
   User,
-  ChefHat,
-  Utensils,
-  UtensilsCrossed,
-  Wine,
-  Coffee,
-  Pizza,
-  Soup,
-  CakeSlice,
-  IceCream,
-  Apple,
-  Grape,
-  Cherry,
-  Banana,
-  Milk,
-  Egg,
-  Carrot,
-  Croissant,
-  Donut,
-  Cookie,
-  Beef,
-  Fish,
-  Wheat,
-  Salad,
-  UserCheck,
-  Settings,
   Briefcase,
-  GraduationCap,
-  Heart,
+  Code,
+  Palette,
+  BarChart3,
+  Users,
   Shield,
   Wrench,
-  Palette,
-  Music,
-  Camera,
-  Gamepad2,
-  Car,
-  Plane,
-  Home,
-  Building,
-  TreePine,
-  Flower,
-  Sun,
-  Moon,
-  Star,
-  Zap,
-  Target,
-  Trophy,
-  Gift,
-  Bell,
-  Clock,
-  Calendar,
-  MapPin,
-  Globe,
-  Smartphone,
-  Laptop,
-  Headphones,
-  Book,
-  PenTool,
-  Scissors,
-  Hammer,
-  Paintbrush,
-  Microscope,
-  Stethoscope,
-  Scale,
+  HeadphonesIcon,
+  TruckIcon,
   Calculator,
-  DollarSign,
-  TrendingUp,
-  BarChart,
-  PieChart,
-  FileText,
-  Folder,
-  Archive,
-  Database,
-  Server,
-  Cloud,
-  Wifi,
-  Lock,
-  Key,
-  Eye,
-  Filter,
-  ListOrderedIcon as Sort,
-  Download,
-  Upload,
-  Share,
-  Link,
-  Mail,
-  Phone,
-  MessageCircle,
-  Video,
-  Mic,
-  Volume2,
-  Play,
-  Pause,
-  SkipForward,
-  SkipBack,
-  Repeat,
-  Shuffle,
-  Radio,
-  Tv,
-  Monitor,
-  Printer,
-  ScanIcon as Scanner,
-  Keyboard,
-  Mouse,
-  CalendarIcon as Date,
+  GraduationCap,
+  Heart,
+  Scale,
+  Camera,
+  Megaphone,
+  Globe,
+  Building,
+  Coffee,
+  UtensilsCrossed,
+  ChefHat,
+  Pizza,
+  Wine,
+  IceCream,
+  Cake,
+  Apple,
+  Fish,
+  Beef,
+  Salad,
+  Cookie,
 } from "lucide-react"
-
-export const iconMap = {
-  User,
-  ChefHat,
-  Utensils,
-  UtensilsCrossed,
-  Wine,
-  Coffee,
-  Pizza,
-  Soup,
-  CakeSlice,
-  IceCream,
-  Apple,
-  Grape,
-  Cherry,
-  Banana,
-  Milk,
-  Egg,
-  Carrot,
-  Croissant,
-  Donut,
-  Cookie,
-  Beef,
-  Fish,
-  Wheat,
-  Salad,
-  UserCheck,
-  Settings,
-  Briefcase,
-  GraduationCap,
-  Heart,
-  Shield,
-  Wrench,
-  Palette,
-  Music,
-  Camera,
-  Gamepad2,
-  Car,
-  Plane,
-  Home,
-  Building,
-  TreePine,
-  Flower,
-  Sun,
-  Moon,
-  Star,
-  Zap,
-  Target,
-  Trophy,
-  Gift,
-  Bell,
-  Clock,
-  Calendar,
-  MapPin,
-  Globe,
-  Smartphone,
-  Laptop,
-  Headphones,
-  Book,
-  PenTool,
-  Scissors,
-  Hammer,
-  Paintbrush,
-  Microscope,
-  Stethoscope,
-  Scale,
-  Calculator,
-  DollarSign,
-  TrendingUp,
-  BarChart,
-  PieChart,
-  FileText,
-  Folder,
-  Archive,
-  Database,
-  Server,
-  Cloud,
-  Wifi,
-  Lock,
-  Key,
-  Eye,
-  Filter,
-  Sort,
-  Download,
-  Upload,
-  Share,
-  Link,
-  Mail,
-  Phone,
-  MessageCircle,
-  Video,
-  Mic,
-  Volume2,
-  Play,
-  Pause,
-  SkipForward,
-  SkipBack,
-  Repeat,
-  Shuffle,
-  Radio,
-  Tv,
-  Monitor,
-  Printer,
-  Scanner,
-  Keyboard,
-  Mouse,
-}
 
 export interface PersonaConfig {
   id: string
@@ -225,9 +43,42 @@ export interface PersonaConfig {
   updated_at?: string
 }
 
+export const iconMap = {
+  User,
+  Briefcase,
+  Code,
+  Palette,
+  BarChart3,
+  Users,
+  Shield,
+  Wrench,
+  HeadphonesIcon,
+  TruckIcon,
+  Calculator,
+  GraduationCap,
+  Heart,
+  Scale,
+  Camera,
+  Megaphone,
+  Globe,
+  Building,
+  Coffee,
+  UtensilsCrossed,
+  ChefHat,
+  Pizza,
+  Wine,
+  IceCream,
+  Cake,
+  Apple,
+  Fish,
+  Beef,
+  Salad,
+  Cookie,
+}
+
 export async function getAllPersonasFromDB(): Promise<PersonaConfig[]> {
   try {
-    console.log("Fetching personas from database...")
+    console.log("Fetching all personas from database...")
 
     const { data, error } = await supabase.from("personas").select("*").order("created_at", { ascending: false })
 
@@ -248,13 +99,17 @@ export async function createPersonaInDB(
   persona: Omit<PersonaConfig, "id" | "created_at" | "updated_at">,
 ): Promise<PersonaConfig | null> {
   try {
+    console.log("Creating persona in database:", persona)
+
     const { data, error } = await supabase
       .from("personas")
       .insert([
         {
-          ...persona,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          title: persona.title,
+          description: persona.description,
+          icon: persona.icon,
+          color: persona.color,
+          questions: persona.questions,
         },
       ])
       .select()
@@ -265,15 +120,18 @@ export async function createPersonaInDB(
       throw error
     }
 
+    console.log("Persona created successfully:", data)
     return data
   } catch (error) {
     console.error("Error in createPersonaInDB:", error)
-    return null
+    throw error
   }
 }
 
 export async function updatePersonaInDB(id: string, updates: Partial<PersonaConfig>): Promise<PersonaConfig | null> {
   try {
+    console.log("Updating persona in database:", id, updates)
+
     const { data, error } = await supabase
       .from("personas")
       .update({
@@ -289,15 +147,18 @@ export async function updatePersonaInDB(id: string, updates: Partial<PersonaConf
       throw error
     }
 
+    console.log("Persona updated successfully:", data)
     return data
   } catch (error) {
     console.error("Error in updatePersonaInDB:", error)
-    return null
+    throw error
   }
 }
 
 export async function deletePersonaFromDB(id: string): Promise<boolean> {
   try {
+    console.log("Deleting persona from database:", id)
+
     const { error } = await supabase.from("personas").delete().eq("id", id)
 
     if (error) {
@@ -305,9 +166,29 @@ export async function deletePersonaFromDB(id: string): Promise<boolean> {
       throw error
     }
 
+    console.log("Persona deleted successfully")
     return true
   } catch (error) {
     console.error("Error in deletePersonaFromDB:", error)
     return false
+  }
+}
+
+export async function getPersonaFromDB(id: string): Promise<PersonaConfig | null> {
+  try {
+    console.log("Fetching persona from database:", id)
+
+    const { data, error } = await supabase.from("personas").select("*").eq("id", id).single()
+
+    if (error) {
+      console.error("Error fetching persona:", error)
+      throw error
+    }
+
+    console.log("Persona fetched successfully:", data)
+    return data
+  } catch (error) {
+    console.error("Error in getPersonaFromDB:", error)
+    return null
   }
 }
