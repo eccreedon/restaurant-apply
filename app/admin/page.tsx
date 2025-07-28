@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { Users, FileText, BarChart3, Trash2, Eye, Calendar } from "lucide-react"
+import { Users, FileText, BarChart3, Trash2, Eye, Calendar, Mail, Phone, User } from "lucide-react"
 import { getAllResponses, deleteResponse, type ResponseData } from "@/lib/responses-db"
-import { getAllPersonasFromDB, type PersonaConfig } from "@/lib/persona-db"
+import { getAllPersonasFromDB, type PersonaConfig, iconMap } from "@/lib/persona-db"
 import { PersonaManagerDB } from "@/components/persona-manager-db"
 import { toast } from "@/hooks/use-toast"
 
@@ -85,6 +85,14 @@ export default function AdminDashboard() {
       {} as Record<string, number>,
     )
     return stats
+  }
+
+  const getPersonaIcon = (personaTitle: string) => {
+    const persona = personas.find((p) => p.title === personaTitle)
+    if (persona && iconMap[persona.icon as keyof typeof iconMap]) {
+      return iconMap[persona.icon as keyof typeof iconMap]
+    }
+    return User
   }
 
   if (isLoading) {
@@ -198,110 +206,107 @@ export default function AdminDashboard() {
                   {selectedResponse ? (
                     <ScrollArea className="h-[600px]">
                       <div className="space-y-6">
-                        {/* Respondent Info */}
-                        <div>
-                          <h4 className="font-semibold mb-3">Respondent Information</h4>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-600">Name:</span>
-                              <p className="font-medium">
-                                {selectedResponse.first_name} {selectedResponse.last_name}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Email:</span>
-                              <p className="font-medium">{selectedResponse.email}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Phone:</span>
-                              <p className="font-medium">{selectedResponse.phone || "Not provided"}</p>
-                            </div>
-                            <div>
-                              <span className="text-gray-600">Persona:</span>
-                              <Badge>{selectedResponse.persona}</Badge>
-                            </div>
-                          </div>
-                        </div>
-
-                        <Separator />
-
-                        {/* Questions & Answers */}
-                        <div>
-                          <h4 className="font-semibold mb-3">Questions & Answers</h4>
-                          <div className="space-y-4">
-                            {selectedResponse.questions.map((question, index) => (
-                              <div key={index} className="border rounded-lg p-4">
-                                <h5 className="font-medium mb-2">
-                                  Q{index + 1}: {question}
-                                </h5>
-                                <p className="text-gray-700 whitespace-pre-wrap">
-                                  {selectedResponse.answers[index] || "No answer provided"}
-                                </p>
+                        {/* Header with User Info - Matching Screenshot Format */}
+                        <div className="border-l-4 border-l-blue-500 pl-4">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-blue-100 rounded-full">
+                                {(() => {
+                                  const IconComponent = getPersonaIcon(selectedResponse.persona)
+                                  return <IconComponent className="h-5 w-5 text-blue-600" />
+                                })()}
                               </div>
-                            ))}
+                              <div>
+                                <h3 className="text-lg font-semibold">
+                                  {selectedResponse.first_name} {selectedResponse.last_name}
+                                </h3>
+                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                  <div className="flex items-center gap-1">
+                                    <Mail className="w-4 h-4" />
+                                    {selectedResponse.email}
+                                  </div>
+                                  {selectedResponse.phone && (
+                                    <div className="flex items-center gap-1">
+                                      <Phone className="w-4 h-4" />
+                                      {selectedResponse.phone}
+                                    </div>
+                                  )}
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="w-4 h-4" />
+                                    {selectedResponse.created_at && formatDate(selectedResponse.created_at)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <Badge variant="secondary">{selectedResponse.persona}</Badge>
                           </div>
-                        </div>
 
-                        {/* AI Analysis */}
-                        {selectedResponse.analysis && (
-                          <>
-                            <Separator />
-                            <div>
-                              <h4 className="font-semibold mb-3">AI Analysis</h4>
+                          {/* AI Analysis - Matching Screenshot Format */}
+                          {selectedResponse.analysis && (
+                            <div className="mb-6">
+                              <h4 className="text-lg font-semibold mb-4">AI Analysis</h4>
+
                               <div className="space-y-4">
-                                <div className="bg-blue-50 rounded-lg p-4">
-                                  <h5 className="font-medium mb-2">Summary</h5>
+                                <div>
+                                  <p className="font-medium mb-2">Summary:</p>
                                   <p className="text-gray-700">{selectedResponse.analysis.summary}</p>
                                 </div>
 
-                                {selectedResponse.analysis.strengths && (
-                                  <div className="bg-green-50 rounded-lg p-4">
-                                    <h5 className="font-medium mb-2">Strengths</h5>
-                                    <ul className="list-disc list-inside space-y-1">
-                                      {selectedResponse.analysis.strengths.map((strength: string, index: number) => (
-                                        <li key={index} className="text-gray-700">
-                                          {strength}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                )}
-
-                                {selectedResponse.analysis.areas_for_improvement && (
-                                  <div className="bg-yellow-50 rounded-lg p-4">
-                                    <h5 className="font-medium mb-2">Areas for Improvement</h5>
-                                    <ul className="list-disc list-inside space-y-1">
-                                      {selectedResponse.analysis.areas_for_improvement.map(
-                                        (area: string, index: number) => (
+                                {selectedResponse.analysis.strengths &&
+                                  selectedResponse.analysis.strengths.length > 0 && (
+                                    <div>
+                                      <p className="font-medium text-green-700 mb-2">Strengths:</p>
+                                      <ul className="list-disc list-inside space-y-1">
+                                        {selectedResponse.analysis.strengths.map((strength: string, index: number) => (
                                           <li key={index} className="text-gray-700">
-                                            {area}
+                                            {strength}
                                           </li>
-                                        ),
-                                      )}
-                                    </ul>
-                                  </div>
-                                )}
-
-                                {selectedResponse.analysis.overall_score && (
-                                  <div className="bg-purple-50 rounded-lg p-4">
-                                    <h5 className="font-medium mb-2">Overall Score</h5>
-                                    <div className="flex items-center gap-2">
-                                      <div className="text-2xl font-bold text-purple-600">
-                                        {selectedResponse.analysis.overall_score}/10
-                                      </div>
-                                      <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                        <div
-                                          className="bg-purple-600 h-2 rounded-full"
-                                          style={{ width: `${selectedResponse.analysis.overall_score * 10}%` }}
-                                        ></div>
-                                      </div>
+                                        ))}
+                                      </ul>
                                     </div>
+                                  )}
+
+                                {selectedResponse.analysis.concerns &&
+                                  selectedResponse.analysis.concerns.length > 0 && (
+                                    <div>
+                                      <p className="font-medium text-orange-600 mb-2">Concerns:</p>
+                                      <ul className="list-disc list-inside space-y-1">
+                                        {selectedResponse.analysis.concerns.map((concern: string, index: number) => (
+                                          <li key={index} className="text-gray-700">
+                                            {concern}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+
+                                {selectedResponse.analysis.recommendation && (
+                                  <div>
+                                    <p className="font-medium text-blue-600 mb-2">Recommendation:</p>
+                                    <p className="text-gray-700">{selectedResponse.analysis.recommendation}</p>
                                   </div>
                                 )}
                               </div>
                             </div>
-                          </>
-                        )}
+                          )}
+
+                          <Separator className="my-6" />
+
+                          {/* Questions & Answers */}
+                          <div>
+                            <h4 className="text-lg font-semibold mb-4">Responses</h4>
+                            <div className="space-y-4">
+                              {selectedResponse.questions.map((question, index) => (
+                                <div key={index} className="space-y-2">
+                                  <p className="font-medium text-gray-900">{question}</p>
+                                  <p className="text-gray-700 whitespace-pre-wrap pl-4">
+                                    {selectedResponse.answers[index] || "No response provided"}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </ScrollArea>
                   ) : (

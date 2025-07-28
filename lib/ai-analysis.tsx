@@ -1,9 +1,8 @@
 export interface AnalysisResult {
   summary: string
   strengths: string[]
-  areas_for_improvement: string[]
-  overall_score: number
-  recommendations: string[]
+  concerns: string[]
+  recommendation: string
 }
 
 export async function analyzeAnswers(
