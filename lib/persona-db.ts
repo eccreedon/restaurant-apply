@@ -1,5 +1,165 @@
 import { supabase } from "./supabase"
-import { Code, Palette, Users, TrendingUp, Megaphone, ChefHat, Coffee } from "lucide-react"
+import {
+  User,
+  Users,
+  ChefHat,
+  Coffee,
+  Utensils,
+  Pizza,
+  Wine,
+  ShoppingCart,
+  Clock,
+  Star,
+  Heart,
+  Truck,
+  Package,
+  Headphones,
+  Shield,
+  Wrench,
+  Briefcase,
+  GraduationCap,
+  Building,
+  Car,
+  Home,
+  Plane,
+  Camera,
+  Music,
+  Gamepad2,
+  Palette,
+  Code,
+  Stethoscope,
+  Scale,
+  Hammer,
+  Scissors,
+  Shirt,
+  Flower,
+  TreePine,
+  Zap,
+  Globe,
+  BookOpen,
+  PenTool,
+  Calculator,
+  Target,
+  TrendingUp,
+  BarChart,
+  DollarSign,
+  CreditCard,
+  Smartphone,
+  Laptop,
+  Wifi,
+  Database,
+  Server,
+  Cloud,
+  Lock,
+  Key,
+  Settings,
+  Cog,
+  Activity,
+  PowerIcon as Pulse,
+  Thermometer,
+  Droplets,
+  Sun,
+  Moon,
+  CloudRain,
+  Snowflake,
+  Wind,
+  Mountain,
+  Waves,
+  Flame,
+  Leaf,
+  Sprout,
+  Bug,
+  Fish,
+  Bird,
+  Rabbit,
+  Cat,
+  Dog,
+  DogIcon as Horse,
+  MilkIcon as Cow,
+  PiggyBankIcon as Pig,
+  WheatIcon as Sheep,
+} from "lucide-react"
+
+export const iconMap = {
+  User,
+  Users,
+  ChefHat,
+  Coffee,
+  Utensils,
+  Pizza,
+  Wine,
+  ShoppingCart,
+  Clock,
+  Star,
+  Heart,
+  Truck,
+  Package,
+  Headphones,
+  Shield,
+  Wrench,
+  Briefcase,
+  GraduationCap,
+  Building,
+  Car,
+  Home,
+  Plane,
+  Camera,
+  Music,
+  Gamepad2,
+  Palette,
+  Code,
+  Stethoscope,
+  Scale,
+  Hammer,
+  Scissors,
+  Shirt,
+  Flower,
+  TreePine,
+  Zap,
+  Globe,
+  BookOpen,
+  PenTool,
+  Calculator,
+  Target,
+  TrendingUp,
+  BarChart,
+  DollarSign,
+  CreditCard,
+  Smartphone,
+  Laptop,
+  Wifi,
+  Database,
+  Server,
+  Cloud,
+  Lock,
+  Key,
+  Settings,
+  Cog,
+  Activity,
+  Pulse,
+  Thermometer,
+  Droplets,
+  Sun,
+  Moon,
+  CloudRain,
+  Snowflake,
+  Wind,
+  Mountain,
+  Waves,
+  Flame,
+  Leaf,
+  Sprout,
+  Bug,
+  Fish,
+  Bird,
+  Rabbit,
+  Cat,
+  Dog,
+  Horse,
+  Cow,
+  Pig,
+  Sheep,
+}
 
 export interface PersonaConfig {
   id: string
@@ -11,63 +171,27 @@ export interface PersonaConfig {
   updated_at?: string
 }
 
-export const iconMap = {
-  Code,
-  Palette,
-  Users,
-  TrendingUp,
-  Megaphone,
-  ChefHat,
-  Coffee,
-}
-
 export async function getAllPersonasFromDB(): Promise<PersonaConfig[]> {
   try {
     console.log("Fetching personas from database...")
-
     const { data, error } = await supabase.from("personas").select("*").order("created_at", { ascending: true })
 
     if (error) {
-      console.error("Supabase error:", error)
+      console.error("Error fetching personas:", error)
       throw error
     }
 
-    console.log("Raw database response:", data)
     console.log(`Fetched ${data?.length || 0} personas`)
+    console.log("Detailed persona data:", data)
 
-    if (!data || data.length === 0) {
-      console.log("No personas found in database")
-      return []
-    }
-
-    // Transform the data and add detailed logging
-    const personas = data.map((persona, index) => {
-      console.log(`Persona ${index + 1}:`, {
-        id: persona.id,
-        title: persona.title,
-        description: persona.description,
-        icon: persona.icon,
-        questionsCount: persona.questions?.length || 0,
-      })
-
-      return {
-        id: persona.id,
-        title: persona.title,
-        description: persona.description,
-        icon: persona.icon,
-        questions: persona.questions || [],
-      }
-    })
-
-    console.log("Detailed persona data:", JSON.stringify(personas, null, 2))
-    return personas
+    return data || []
   } catch (error) {
-    console.error("Error fetching personas:", error)
+    console.error("Error in getAllPersonasFromDB:", error)
     return []
   }
 }
 
-export async function createPersona(
+export async function createPersonaInDB(
   persona: Omit<PersonaConfig, "id" | "created_at" | "updated_at">,
 ): Promise<PersonaConfig> {
   const { data, error } = await supabase.from("personas").insert([persona]).select().single()
@@ -79,7 +203,7 @@ export async function createPersona(
   return data
 }
 
-export async function updatePersona(id: string, updates: Partial<PersonaConfig>): Promise<PersonaConfig> {
+export async function updatePersonaInDB(id: string, updates: Partial<PersonaConfig>): Promise<PersonaConfig> {
   const { data, error } = await supabase.from("personas").update(updates).eq("id", id).select().single()
 
   if (error) {
@@ -89,7 +213,7 @@ export async function updatePersona(id: string, updates: Partial<PersonaConfig>)
   return data
 }
 
-export async function deletePersona(id: string): Promise<void> {
+export async function deletePersonaFromDB(id: string): Promise<void> {
   const { error } = await supabase.from("personas").delete().eq("id", id)
 
   if (error) {

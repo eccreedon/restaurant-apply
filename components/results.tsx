@@ -1,52 +1,29 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, RotateCcw, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import type { PersonaConfig } from "@/lib/persona-db"
-import type { SaveResponseResult } from "@/lib/responses-db"
+import { Separator } from "@/components/ui/separator"
+import { CheckCircle, RotateCcw, AlertCircle } from "lucide-react"
 
 interface ResultsProps {
-  result: SaveResponseResult | null
-  respondentInfo: {
-    firstName: string
-    lastName: string
-    email: string
-    phone: string
-  }
-  persona: PersonaConfig | null
-  onStartOver: () => void
+  analysis: any
+  onRestart: () => void
 }
 
-export function Results({ result, respondentInfo, persona, onStartOver }: ResultsProps) {
-  if (!result) {
+export function Results({ analysis, onRestart }: ResultsProps) {
+  if (!analysis) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl">
           <CardContent className="p-8 text-center">
             <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">No Results Available</h2>
-            <p className="text-gray-600 mb-4">Something went wrong. Please try again.</p>
-            <Button onClick={onStartOver}>Start Over</Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (!result.success) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Submission Failed</h2>
-            <p className="text-gray-600 mb-4">
-              {result.error || "An error occurred while submitting your assessment."}
-            </p>
-            <Button onClick={onStartOver}>Try Again</Button>
+            <h2 className="text-xl font-semibold mb-4">Processing Your Assessment</h2>
+            <p className="text-gray-600 mb-6">Your assessment is being processed. This may take a few moments.</p>
+            <Button onClick={onRestart} variant="outline">
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Start New Assessment
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -54,82 +31,78 @@ export function Results({ result, respondentInfo, persona, onStartOver }: Result
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-4xl space-y-6">
-        <Card>
-          <CardHeader className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <CheckCircle className="w-16 h-16 text-green-500" />
-            </div>
-            <CardTitle className="text-3xl font-bold text-green-700">Assessment Complete!</CardTitle>
-            <p className="text-gray-600 mt-2">
-              Thank you for completing the assessment. Your responses have been successfully submitted.
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold text-lg mb-3">Your Information</h3>
-                <div className="space-y-2 text-sm">
-                  <p>
-                    <strong>Name:</strong> {respondentInfo.firstName} {respondentInfo.lastName}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {respondentInfo.email}
-                  </p>
-                  <p>
-                    <strong>Phone:</strong> {respondentInfo.phone}
-                  </p>
-                  <p>
-                    <strong>Assessment Type:</strong> <Badge variant="secondary">{persona?.title}</Badge>
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-lg mb-3">Assessment Details</h3>
-                <div className="space-y-2 text-sm">
-                  <p>
-                    <strong>Questions Answered:</strong> {persona?.questions?.length || 0}
-                  </p>
-                  <p>
-                    <strong>Submission ID:</strong> {result.id}
-                  </p>
-                  <p>
-                    <strong>Submitted:</strong> {new Date().toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {result.analysis && (
-              <div>
-                <h3 className="font-semibold text-lg mb-3">AI Analysis</h3>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="prose prose-sm max-w-none">
-                    <div dangerouslySetInnerHTML={{ __html: result.analysis.replace(/\n/g, "<br>") }} />
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-4xl">
+        <CardHeader className="text-center">
+          <div className="flex items-center justify-center mb-4">
+            <CheckCircle className="w-8 h-8 text-green-500" />
+          </div>
+          <CardTitle className="text-2xl">Assessment Complete!</CardTitle>
+          <CardDescription>
+            Thank you for completing the assessment. Here are your personalized results.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {analysis.strengths && analysis.strengths.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-3 text-green-700">Strengths</h3>
+              <div className="space-y-2">
+                {analysis.strengths.map((strength: string, index: number) => (
+                  <div key={index} className="flex items-start space-x-2">
+                    <Badge variant="secondary" className="bg-green-100 text-green-800">
+                      ✓
+                    </Badge>
+                    <p className="text-sm">{strength}</p>
                   </div>
-                </div>
+                ))}
               </div>
-            )}
-
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Your assessment results have been saved. You will receive a follow-up email with detailed feedback
-                within 24 hours.
-              </AlertDescription>
-            </Alert>
-
-            <div className="text-center">
-              <Button onClick={onStartOver} variant="outline" size="lg">
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Take Another Assessment
-              </Button>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+
+          <Separator />
+
+          {analysis.concerns && analysis.concerns.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-3 text-orange-700">Areas for Improvement</h3>
+              <div className="space-y-2">
+                {analysis.concerns.map((concern: string, index: number) => (
+                  <div key={index} className="flex items-start space-x-2">
+                    <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                      !
+                    </Badge>
+                    <p className="text-sm">{concern}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <Separator />
+
+          {analysis.recommendations && analysis.recommendations.length > 0 && (
+            <div>
+              <h3 className="text-lg font-semibold mb-3 text-blue-700">Recommendations</h3>
+              <div className="space-y-2">
+                {analysis.recommendations.map((recommendation: string, index: number) => (
+                  <div key={index} className="flex items-start space-x-2">
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                      →
+                    </Badge>
+                    <p className="text-sm">{recommendation}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="pt-6 text-center">
+            <Button onClick={onRestart} size="lg">
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Take Another Assessment
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
