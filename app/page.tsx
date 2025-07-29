@@ -36,7 +36,7 @@ export default function Home() {
       setIsLoading(true)
       console.log("Loading personas from database...")
       const data = await getAllPersonasFromDB()
-      console.log("Loaded personas in component:", data)
+      console.log("Loaded personas:", data)
       setPersonas(data)
     } catch (error) {
       console.error("Error loading personas:", error)
@@ -46,7 +46,7 @@ export default function Home() {
     }
   }
 
-  const handleInfoSubmit = (info: { name: string; email: string }) => {
+  const handleInfoSubmit = (info: { name: string; email: string; phone: string }) => {
     const [firstName, ...lastNameParts] = info.name.split(" ")
     const lastName = lastNameParts.join(" ")
 
@@ -54,20 +54,25 @@ export default function Home() {
       firstName: firstName || "",
       lastName: lastName || "",
       email: info.email,
-      phone: "", // Will be updated in the next step if provided
+      phone: info.phone,
     })
     setCurrentStep("persona")
   }
 
   const handlePersonaSelect = (persona: PersonaConfig) => {
     console.log("Selected persona:", persona)
+    console.log("Persona questions:", persona.questions)
     setSelectedPersona(persona)
     setCurrentStep("questions")
   }
 
   const handleQuestionsComplete = async (questionAnswers: string[]) => {
-    if (!selectedPersona) return
+    if (!selectedPersona) {
+      console.error("No persona selected")
+      return
+    }
 
+    console.log("Completing questions with answers:", questionAnswers)
     setAnswers(questionAnswers)
     setIsSubmitting(true)
 
@@ -82,6 +87,7 @@ export default function Home() {
         answers: questionAnswers,
       })
 
+      console.log("Save result:", result)
       setSubmitResult(result)
       setCurrentStep("results")
     } catch (error) {
