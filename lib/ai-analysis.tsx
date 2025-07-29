@@ -1,17 +1,6 @@
-export interface AnalysisResult {
-  summary: string
-  strengths: string[]
-  concerns: string[]
-  recommendation: string
-}
-
-export async function analyzeAnswers(
-  questions: string[],
-  answers: string[],
-  persona: string,
-): Promise<AnalysisResult | null> {
+export async function analyzeAnswers(questions: string[], answers: string[], persona: string) {
   try {
-    console.log("Starting AI analysis for persona:", persona)
+    console.log("Starting AI analysis with:", { questions, answers, persona })
 
     const response = await fetch("/api/analyze", {
       method: "POST",
@@ -26,16 +15,14 @@ export async function analyzeAnswers(
     })
 
     if (!response.ok) {
-      console.error(`HTTP error! status: ${response.status}`)
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
     const result = await response.json()
-    console.log("AI analysis completed:", result)
-
+    console.log("AI analysis result:", result)
     return result
   } catch (error) {
     console.error("Error in analyzeAnswers:", error)
-    return null
+    throw error
   }
 }
