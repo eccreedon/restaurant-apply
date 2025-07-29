@@ -67,8 +67,8 @@ export default function Home() {
 
     try {
       const result = await saveResponse({
-        firstName: respondentInfo.firstName,
-        lastName: respondentInfo.lastName,
+        first_name: respondentInfo.firstName,
+        last_name: respondentInfo.lastName,
         email: respondentInfo.email,
         phone: respondentInfo.phone,
         persona: selectedPersona.title,
@@ -120,7 +120,7 @@ export default function Home() {
   }
 
   if (currentStep === "persona") {
-    return <PersonaSelector personas={personas} onSelect={handlePersonaSelect} onBack={handleBackToInfo} />
+    return <PersonaSelector personas={personas} onPersonaSelect={handlePersonaSelect} onBack={handleBackToInfo} />
   }
 
   if (currentStep === "questions" && selectedPersona) {
