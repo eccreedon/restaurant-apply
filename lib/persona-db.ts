@@ -1,24 +1,35 @@
 import { supabase } from "./supabase"
 import {
   User,
-  Users,
   Briefcase,
   Code,
   Palette,
   BarChart3,
-  MessageSquare,
+  Users,
   Settings,
+  Heart,
+  Zap,
   Target,
-  TrendingUp,
+  Lightbulb,
+  Shield,
+  Globe,
+  Camera,
+  Music,
+  Wrench,
+  Truck,
+  GraduationCap,
+  Building,
+  Stethoscope,
   ChefHat,
   Coffee,
 } from "lucide-react"
 
 export interface PersonaConfig {
-  id?: string
+  id: string
   title: string
   description: string
   icon: string
+  color: string
   questions: string[]
   created_at?: string
   updated_at?: string
@@ -26,22 +37,32 @@ export interface PersonaConfig {
 
 export const iconMap = {
   User,
-  Users,
   Briefcase,
   Code,
   Palette,
   BarChart3,
-  MessageSquare,
+  Users,
   Settings,
+  Heart,
+  Zap,
   Target,
-  TrendingUp,
+  Lightbulb,
+  Shield,
+  Globe,
+  Camera,
+  Music,
+  Wrench,
+  Truck,
+  GraduationCap,
+  Building,
+  Stethoscope,
   ChefHat,
   Coffee,
 }
 
 export async function getAllPersonasFromDB(): Promise<PersonaConfig[]> {
   try {
-    console.log("Fetching personas from database...")
+    console.log("Loading personas from database...")
 
     const { data, error } = await supabase.from("personas").select("*").order("created_at", { ascending: true })
 
@@ -51,7 +72,6 @@ export async function getAllPersonasFromDB(): Promise<PersonaConfig[]> {
     }
 
     console.log(`Fetched ${data?.length || 0} personas`)
-    console.log("Detailed persona data:", data)
 
     return data || []
   } catch (error) {
@@ -66,7 +86,19 @@ export async function createPersonaInDB(
   try {
     console.log("Creating persona in database:", persona)
 
-    const { data, error } = await supabase.from("personas").insert([persona]).select().single()
+    const { data, error } = await supabase
+      .from("personas")
+      .insert([
+        {
+          title: persona.title,
+          description: persona.description,
+          icon: persona.icon,
+          color: persona.color,
+          questions: persona.questions,
+        },
+      ])
+      .select()
+      .single()
 
     if (error) {
       console.error("Error creating persona:", error)
@@ -85,7 +117,19 @@ export async function updatePersonaInDB(id: string, updates: Partial<PersonaConf
   try {
     console.log("Updating persona in database:", id, updates)
 
-    const { data, error } = await supabase.from("personas").update(updates).eq("id", id).select().single()
+    const { data, error } = await supabase
+      .from("personas")
+      .update({
+        title: updates.title,
+        description: updates.description,
+        icon: updates.icon,
+        color: updates.color,
+        questions: updates.questions,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single()
 
     if (error) {
       console.error("Error updating persona:", error)

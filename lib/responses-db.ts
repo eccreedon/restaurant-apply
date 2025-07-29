@@ -18,7 +18,6 @@ export interface SaveResponseResult {
   success: boolean
   error?: string
   data?: ResponseData
-  analysis?: any
 }
 
 export async function saveResponse(responseData: Omit<ResponseData, "id" | "created_at">): Promise<SaveResponseResult> {
@@ -87,7 +86,6 @@ export async function saveResponse(responseData: Omit<ResponseData, "id" | "crea
     return {
       success: true,
       data: data as ResponseData,
-      analysis: analysis,
     }
   } catch (error) {
     console.error("Error saving response:", error)
