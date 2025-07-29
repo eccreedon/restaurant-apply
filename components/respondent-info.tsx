@@ -1,20 +1,23 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowRight } from "lucide-react"
 
+interface RespondentInfo {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+}
+
 interface RespondentInfoProps {
-  onComplete: (info: {
-    firstName: string
-    lastName: string
-    email: string
-    phone: string
-  }) => void
+  onComplete: (info: RespondentInfo) => void
 }
 
 export function RespondentInfo({ onComplete }: RespondentInfoProps) {
@@ -50,7 +53,7 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
 
     if (!formData.email.trim()) {
       newErrors.email = "Email is required"
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Please enter a valid email address"
     }
 
@@ -69,19 +72,25 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
     }
   }
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: value })
+  const handleInputChange = (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: e.target.value,
+    }))
     // Clear error when user starts typing
-    if (errors[field as keyof typeof errors]) {
-      setErrors({ ...errors, [field]: "" })
+    if (errors[field]) {
+      setErrors((prev) => ({
+        ...prev,
+        [field]: "",
+      }))
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome to Our Assessment</CardTitle>
+          <CardTitle className="text-2xl font-bold">Welcome to the Assessment</CardTitle>
           <CardDescription>Please provide your information to get started</CardDescription>
         </CardHeader>
         <CardContent>
@@ -92,7 +101,7 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
                 id="firstName"
                 type="text"
                 value={formData.firstName}
-                onChange={(e) => handleInputChange("firstName", e.target.value)}
+                onChange={handleInputChange("firstName")}
                 className={errors.firstName ? "border-red-500" : ""}
                 placeholder="Enter your first name"
               />
@@ -105,7 +114,7 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
                 id="lastName"
                 type="text"
                 value={formData.lastName}
-                onChange={(e) => handleInputChange("lastName", e.target.value)}
+                onChange={handleInputChange("lastName")}
                 className={errors.lastName ? "border-red-500" : ""}
                 placeholder="Enter your last name"
               />
@@ -118,7 +127,7 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
+                onChange={handleInputChange("email")}
                 className={errors.email ? "border-red-500" : ""}
                 placeholder="Enter your email address"
               />
@@ -131,16 +140,16 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
                 id="phone"
                 type="tel"
                 value={formData.phone}
-                onChange={(e) => handleInputChange("phone", e.target.value)}
+                onChange={handleInputChange("phone")}
                 className={errors.phone ? "border-red-500" : ""}
                 placeholder="Enter your phone number"
               />
               {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
             </div>
 
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full flex items-center justify-center gap-2">
               Continue
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <ArrowRight className="w-4 h-4" />
             </Button>
           </form>
         </CardContent>

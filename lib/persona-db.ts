@@ -74,10 +74,7 @@ import {
   Rabbit,
   Cat,
   Dog,
-  DogIcon as Horse,
-  MilkIcon as Cow,
-  PiggyBankIcon as Pig,
-  WheatIcon as Sheep,
+  Megaphone,
 } from "lucide-react"
 
 export const iconMap = {
@@ -155,10 +152,7 @@ export const iconMap = {
   Rabbit,
   Cat,
   Dog,
-  Horse,
-  Cow,
-  Pig,
-  Sheep,
+  Megaphone,
 }
 
 export interface PersonaConfig {
@@ -177,13 +171,11 @@ export async function getAllPersonasFromDB(): Promise<PersonaConfig[]> {
     const { data, error } = await supabase.from("personas").select("*").order("created_at", { ascending: true })
 
     if (error) {
-      console.error("Error fetching personas:", error)
+      console.error("Database error:", error)
       throw error
     }
 
     console.log(`Fetched ${data?.length || 0} personas`)
-    console.log("Detailed persona data:", data)
-
     return data || []
   } catch (error) {
     console.error("Error in getAllPersonasFromDB:", error)
