@@ -10,8 +10,10 @@ import { saveResponse, type SaveResponseResult } from "@/lib/responses-db"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 
+export type Persona = string
+
 export default function Home() {
-  const [currentStep, setCurrentStep] = useState<"persona" | "info" | "questions" | "results">("persona")
+  const [currentStep, setCurrentStep] = useState<"info" | "persona" | "questions" | "results">("info")
   const [selectedPersona, setSelectedPersona] = useState<PersonaConfig | null>(null)
   const [personas, setPersonas] = useState<PersonaConfig[]>([])
   const [respondentInfo, setRespondentInfo] = useState({
@@ -24,11 +26,10 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitResult, setSubmitResult] = useState<SaveResponseResult | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     loadPersonas()
-  }, [refreshKey])
+  }, [])
 
   const loadPersonas = async () => {
     try {
@@ -36,13 +37,7 @@ export default function Home() {
       console.log("Loading personas from database...")
       const data = await getAllPersonasFromDB()
       console.log("Loaded personas in component:", data)
-      console.log("Setting personas state with:", data.length, "personas")
-
-      // Force a re-render by updating state
-      setPersonas([])
-      setTimeout(() => {
-        setPersonas(data)
-      }, 10)
+      setPersonas(data)
     } catch (error) {
       console.error("Error loading personas:", error)
       setPersonas([])
@@ -51,14 +46,22 @@ export default function Home() {
     }
   }
 
+  const handleInfoSubmit = (info: { name: string; email: string }) => {
+    const [firstName, ...lastNameParts] = info.name.split(" ")
+    const lastName = lastNameParts.join(" ")
+
+    setRespondentInfo({
+      firstName: firstName || "",
+      lastName: lastName || "",
+      email: info.email,
+      phone: "", // Will be updated in the next step if provided
+    })
+    setCurrentStep("persona")
+  }
+
   const handlePersonaSelect = (persona: PersonaConfig) => {
     console.log("Selected persona:", persona)
     setSelectedPersona(persona)
-    setCurrentStep("info")
-  }
-
-  const handleInfoSubmit = (info: typeof respondentInfo) => {
-    setRespondentInfo(info)
     setCurrentStep("questions")
   }
 
@@ -94,13 +97,11 @@ export default function Home() {
   }
 
   const handleStartOver = () => {
-    setCurrentStep("persona")
+    setCurrentStep("info")
     setSelectedPersona(null)
     setRespondentInfo({ firstName: "", lastName: "", email: "", phone: "" })
     setAnswers([])
     setSubmitResult(null)
-    // Refresh personas when starting over
-    setRefreshKey((prev) => prev + 1)
   }
 
   if (isLoading) {
@@ -117,24 +118,29 @@ export default function Home() {
     )
   }
 
-  console.log("Rendering with personas:", personas)
-  console.log("Current personas count:", personas.length)
+  if (isSubmitting) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-8 text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <h2 className="text-xl font-semibold mb-2">Submitting Assessment</h2>
+            <p className="text-gray-600">Please wait while we process your responses...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {currentStep === "info" && <RespondentInfo onSubmit={handleInfoSubmit} />}
+
       {currentStep === "persona" && (
         <PersonaSelector
-          key={`personas-${refreshKey}-${personas.length}`}
           personas={personas}
           onPersonaSelect={handlePersonaSelect}
-        />
-      )}
-
-      {currentStep === "info" && selectedPersona && (
-        <RespondentInfo
-          persona={selectedPersona}
-          onSubmit={handleInfoSubmit}
-          onBack={() => setCurrentStep("persona")}
+          onBack={() => setCurrentStep("info")}
         />
       )}
 
@@ -142,7 +148,7 @@ export default function Home() {
         <Questionnaire
           persona={selectedPersona}
           onComplete={handleQuestionsComplete}
-          onBack={() => setCurrentStep("info")}
+          onBack={() => setCurrentStep("persona")}
         />
       )}
 

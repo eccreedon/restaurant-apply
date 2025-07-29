@@ -1,29 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Users } from "lucide-react"
+import { ArrowRight, ArrowLeft, Users } from "lucide-react"
 import { type PersonaConfig, iconMap } from "@/lib/persona-db"
 
 interface PersonaSelectorProps {
   personas: PersonaConfig[]
   onPersonaSelect: (persona: PersonaConfig) => void
+  onBack: () => void
 }
 
-export function PersonaSelector({ personas, onPersonaSelect }: PersonaSelectorProps) {
+export function PersonaSelector({ personas, onPersonaSelect, onBack }: PersonaSelectorProps) {
   const [selectedPersona, setSelectedPersona] = useState<PersonaConfig | null>(null)
-  const [displayPersonas, setDisplayPersonas] = useState<PersonaConfig[]>([])
-
-  useEffect(() => {
-    console.log("PersonaSelector useEffect - received personas:", personas)
-    console.log("PersonaSelector personas count:", personas.length)
-    setDisplayPersonas([...personas])
-  }, [personas])
 
   const handlePersonaClick = (persona: PersonaConfig) => {
-    console.log("Persona clicked:", persona)
     setSelectedPersona(persona)
   }
 
@@ -34,13 +27,9 @@ export function PersonaSelector({ personas, onPersonaSelect }: PersonaSelectorPr
   }
 
   const getPersonaIcon = (iconName: string) => {
-    console.log("Looking for icon:", iconName)
     const IconComponent = iconMap[iconName as keyof typeof iconMap]
-    console.log("Found icon component:", !!IconComponent)
     return IconComponent || Users
   }
-
-  console.log("PersonaSelector rendering with displayPersonas:", displayPersonas)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
@@ -51,10 +40,9 @@ export function PersonaSelector({ personas, onPersonaSelect }: PersonaSelectorPr
             Select the assessment type that best matches your role or interests. Each assessment is tailored with
             specific questions designed for your context.
           </p>
-          <div className="mt-4 text-sm text-gray-500">Debug: Showing {displayPersonas.length} personas</div>
         </div>
 
-        {displayPersonas.length === 0 ? (
+        {personas.length === 0 ? (
           <div className="text-center py-12">
             <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-700 mb-2">No Assessments Available</h3>
@@ -63,12 +51,11 @@ export function PersonaSelector({ personas, onPersonaSelect }: PersonaSelectorPr
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {displayPersonas.map((persona) => {
-                console.log("Rendering persona:", persona.title, "with icon:", persona.icon)
+              {personas.map((persona) => {
                 const IconComponent = getPersonaIcon(persona.icon)
                 return (
                   <Card
-                    key={`${persona.id}-${persona.title}`}
+                    key={persona.id}
                     className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
                       selectedPersona?.id === persona.id
                         ? "ring-2 ring-blue-500 shadow-lg transform scale-105"
@@ -98,23 +85,31 @@ export function PersonaSelector({ personas, onPersonaSelect }: PersonaSelectorPr
               })}
             </div>
 
-            {selectedPersona && (
-              <div className="text-center">
-                <Card className="max-w-md mx-auto bg-blue-50 border-blue-200">
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-semibold mb-2">Ready to start?</h3>
-                    <p className="text-gray-600 mb-4">
-                      You've selected the <strong>{selectedPersona.title}</strong> assessment with{" "}
-                      {selectedPersona.questions.length} questions.
-                    </p>
-                    <Button onClick={handleContinue} className="w-full" size="lg">
-                      Continue to Assessment
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
+            <div className="flex justify-between items-center">
+              <Button variant="outline" onClick={onBack} className="flex items-center gap-2 bg-transparent">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Info
+              </Button>
+
+              {selectedPersona && (
+                <Card className="max-w-md bg-blue-50 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold">Ready to start?</h3>
+                        <p className="text-sm text-gray-600">
+                          <strong>{selectedPersona.title}</strong> - {selectedPersona.questions.length} questions
+                        </p>
+                      </div>
+                      <Button onClick={handleContinue} className="flex items-center gap-2">
+                        Continue
+                        <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
-              </div>
-            )}
+              )}
+            </div>
           </>
         )}
       </div>
