@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
 import Anthropic from "@anthropic-ai/sdk"
 
 const anthropic = new Anthropic({
@@ -17,16 +17,20 @@ export async function POST(request: NextRequest) {
     const { questions, answers, persona } = await request.json()
 
     console.log("Starting AI analysis for persona:", persona)
+    console.log("API Key exists:", !!process.env.ANTHROPIC_API_KEY)
 
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error("ANTHROPIC_API_KEY is not set")
-      throw new Error("API key not configured")
+      throw new Error("ANTHROPIC_API_KEY is not configured")
     }
 
     const prompt = `You are an expert HR professional analyzing responses for a ${persona} position. 
 
 Questions and Answers:
-${questions.map((q: string, i: number) => `Q${i + 1}: ${q}\nA${i + 1}: ${answers[i] || "No response"}`).join("\n\n")}
+${questions.map((q: string, i: number) => `Q${i + 1}: ${q}
+A${i + 1}: ${answers[i] || "No response"}\`).join("
+
+")}
 
 Please provide a comprehensive analysis in the following format:
 
@@ -44,9 +48,9 @@ CONCERNS:
 
 RECOMMENDATION:
 [Clear recommendation: Highly Recommended, Recommended, Consider with Reservations, or Not Recommended]`
-
+\
     console.log("Sending request to Anthropic...")
-
+\
     const response = await anthropic.messages.create({
       model: "claude-3-sonnet-20240229",
       max_tokens: 1000,
@@ -58,9 +62,8 @@ RECOMMENDATION:
       ],
     })
 
-    console.log("Received response from Anthropic")
-
     const analysisText = response.content[0].type === "text" ? response.content[0].text : ""
+    console.log("AI analysis completed")
 
     // Parse the response into structured format
     const sections = analysisText.split(/(?:SUMMARY:|STRENGTHS:|CONCERNS:|RECOMMENDATION:)/i)
@@ -89,15 +92,13 @@ RECOMMENDATION:
       recommendation,
     }
 
-    console.log("Parsed analysis result:", result)
-
     return NextResponse.json(result)
   } catch (error) {
     console.error("Error in AI analysis:", error)
 
     // Return a fallback analysis
     const fallback: AnalysisResult = {
-      summary: `Candidate has completed the assessment. Manual review recommended.`,
+      summary: "Candidate has completed the assessment. Manual review recommended.",
       strengths: ["Completed all required questions", "Showed engagement with the process"],
       concerns: ["AI analysis temporarily unavailable"],
       recommendation: "Manual Review Required",
