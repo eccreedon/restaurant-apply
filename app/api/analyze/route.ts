@@ -17,6 +17,13 @@ export async function POST(request: NextRequest) {
     const { questions, answers, persona } = await request.json()
 
     console.log("Starting AI analysis for persona:", persona)
+    console.log("Questions:", questions)
+    console.log("Answers:", answers)
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error("ANTHROPIC_API_KEY is not set")
+      throw new Error("API key not configured")
+    }
 
     const prompt = `You are an expert HR professional analyzing responses for a ${persona} position. 
 
@@ -40,6 +47,8 @@ CONCERNS:
 RECOMMENDATION:
 [Clear recommendation: Highly Recommended, Recommended, Consider with Reservations, or Not Recommended]`
 
+    console.log("Sending request to Anthropic...")
+
     const response = await anthropic.messages.create({
       model: "claude-3-sonnet-20240229",
       max_tokens: 1000,
@@ -51,8 +60,10 @@ RECOMMENDATION:
       ],
     })
 
+    console.log("Received response from Anthropic")
+
     const analysisText = response.content[0].type === "text" ? response.content[0].text : ""
-    console.log("AI analysis completed")
+    console.log("Analysis text:", analysisText)
 
     // Parse the response into structured format
     const sections = analysisText.split(/(?:SUMMARY:|STRENGTHS:|CONCERNS:|RECOMMENDATION:)/i)
@@ -80,6 +91,8 @@ RECOMMENDATION:
       concerns,
       recommendation,
     }
+
+    console.log("Parsed analysis result:", result)
 
     return NextResponse.json(result)
   } catch (error) {

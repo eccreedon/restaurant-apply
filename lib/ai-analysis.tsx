@@ -26,6 +26,7 @@ export async function analyzeAnswers(
     })
 
     if (!response.ok) {
+      console.error(`HTTP error! status: ${response.status}`)
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
