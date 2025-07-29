@@ -97,10 +97,6 @@ export function Questionnaire({ persona, onComplete, onBack }: QuestionnaireProp
 
           <div className="flex justify-between items-center">
             <div className="flex gap-2">
-              <Button variant="outline" onClick={onBack} className="flex items-center gap-2 bg-transparent">
-                <ArrowLeft className="w-4 h-4" />
-                Back to Personas
-              </Button>
               {currentQuestionIndex > 0 && (
                 <Button variant="outline" onClick={handlePrevious} className="flex items-center gap-2 bg-transparent">
                   <ArrowLeft className="w-4 h-4" />

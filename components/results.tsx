@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, AlertCircle, RefreshCw } from "lucide-react"
+import { CheckCircle, RefreshCw } from "lucide-react"
 
 interface ResultsProps {
   analysis: any
@@ -16,10 +16,12 @@ export function Results({ analysis, onRestart }: ResultsProps) {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl">
           <CardContent className="p-8 text-center">
-            <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-semibold mb-2">Processing Your Assessment</h2>
-            <p className="text-gray-600 mb-6">Your assessment is being analyzed. This may take a few moments.</p>
-            <Button onClick={onRestart}>Start Over</Button>
+            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-semibold mb-2">Assessment Complete</h2>
+            <p className="text-gray-600 mb-6">
+              Thank you for submitting the assessment. A member of our team will be in touch!
+            </p>
+            <Button onClick={onRestart}>Take Another Assessment</Button>
           </CardContent>
         </Card>
       </div>
@@ -72,7 +74,7 @@ export function Results({ analysis, onRestart }: ResultsProps) {
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle className="text-xl text-orange-700 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5" />
+                <CheckCircle className="w-5 h-5" />
                 Areas for Improvement
               </CardTitle>
             </CardHeader>

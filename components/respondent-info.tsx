@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowRight } from "lucide-react"
 
 interface RespondentInfo {
   firstName: string
@@ -21,27 +20,17 @@ interface RespondentInfoProps {
 }
 
 export function RespondentInfo({ onComplete }: RespondentInfoProps) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<RespondentInfo>({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
   })
 
-  const [errors, setErrors] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-  })
+  const [errors, setErrors] = useState<Partial<RespondentInfo>>({})
 
   const validateForm = () => {
-    const newErrors = {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-    }
+    const newErrors: Partial<RespondentInfo> = {}
 
     if (!formData.firstName.trim()) {
       newErrors.firstName = "First name is required"
@@ -62,7 +51,7 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
     }
 
     setErrors(newErrors)
-    return !Object.values(newErrors).some((error) => error !== "")
+    return Object.keys(newErrors).length === 0
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -72,17 +61,11 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
     }
   }
 
-  const handleInputChange = (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: e.target.value,
-    }))
+  const handleInputChange = (field: keyof RespondentInfo, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
     // Clear error when user starts typing
     if (errors[field]) {
-      setErrors((prev) => ({
-        ...prev,
-        [field]: "",
-      }))
+      setErrors((prev) => ({ ...prev, [field]: undefined }))
     }
   }
 
@@ -90,35 +73,37 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Welcome to the Assessment</CardTitle>
-          <CardDescription>Please provide your information to get started</CardDescription>
+          <CardTitle className="text-2xl font-bold">Welcome</CardTitle>
+          <CardDescription>Please provide your information to begin the assessment</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First Name *</Label>
-              <Input
-                id="firstName"
-                type="text"
-                value={formData.firstName}
-                onChange={handleInputChange("firstName")}
-                className={errors.firstName ? "border-red-500" : ""}
-                placeholder="Enter your first name"
-              />
-              {errors.firstName && <p className="text-sm text-red-500">{errors.firstName}</p>}
-            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name *</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange("firstName", e.target.value)}
+                  className={errors.firstName ? "border-red-500" : ""}
+                  placeholder="Enter your first name"
+                />
+                {errors.firstName && <p className="text-sm text-red-500">{errors.firstName}</p>}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name *</Label>
-              <Input
-                id="lastName"
-                type="text"
-                value={formData.lastName}
-                onChange={handleInputChange("lastName")}
-                className={errors.lastName ? "border-red-500" : ""}
-                placeholder="Enter your last name"
-              />
-              {errors.lastName && <p className="text-sm text-red-500">{errors.lastName}</p>}
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name *</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange("lastName", e.target.value)}
+                  className={errors.lastName ? "border-red-500" : ""}
+                  placeholder="Enter your last name"
+                />
+                {errors.lastName && <p className="text-sm text-red-500">{errors.lastName}</p>}
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -127,7 +112,7 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={handleInputChange("email")}
+                onChange={(e) => handleInputChange("email", e.target.value)}
                 className={errors.email ? "border-red-500" : ""}
                 placeholder="Enter your email address"
               />
@@ -140,16 +125,15 @@ export function RespondentInfo({ onComplete }: RespondentInfoProps) {
                 id="phone"
                 type="tel"
                 value={formData.phone}
-                onChange={handleInputChange("phone")}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
                 className={errors.phone ? "border-red-500" : ""}
                 placeholder="Enter your phone number"
               />
               {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
             </div>
 
-            <Button type="submit" className="w-full flex items-center justify-center gap-2">
-              Continue
-              <ArrowRight className="w-4 h-4" />
+            <Button type="submit" className="w-full">
+              Continue to Assessment
             </Button>
           </form>
         </CardContent>

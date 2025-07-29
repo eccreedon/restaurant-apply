@@ -6,26 +6,25 @@ import { PersonaSelector } from "@/components/persona-selector"
 import { Questionnaire } from "@/components/questionnaire"
 import { Results } from "@/components/results"
 import { getAllPersonasFromDB, type PersonaConfig } from "@/lib/persona-db"
-import { saveResponse, type SaveResponseResult } from "@/lib/responses-db"
-import { Card, CardContent } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
+import { saveResponse } from "@/lib/responses-db"
 
-export type Persona = string
+type Step = "info" | "persona" | "questions" | "results"
+
+interface RespondentData {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+}
 
 export default function Home() {
-  const [currentStep, setCurrentStep] = useState<"info" | "persona" | "questions" | "results">("info")
+  const [currentStep, setCurrentStep] = useState<Step>("info")
+  const [respondentInfo, setRespondentInfo] = useState<RespondentData | null>(null)
   const [selectedPersona, setSelectedPersona] = useState<PersonaConfig | null>(null)
   const [personas, setPersonas] = useState<PersonaConfig[]>([])
-  const [respondentInfo, setRespondentInfo] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-  })
   const [answers, setAnswers] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitResult, setSubmitResult] = useState<SaveResponseResult | null>(null)
+  const [analysis, setAnalysis] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     loadPersonas()
@@ -33,125 +32,104 @@ export default function Home() {
 
   const loadPersonas = async () => {
     try {
-      setIsLoading(true)
-      console.log("Loading personas from database...")
-      const data = await getAllPersonasFromDB()
-      console.log("Loaded personas in component:", data)
-      setPersonas(data)
+      const personaData = await getAllPersonasFromDB()
+      console.log("Personas loaded in page component:", personaData)
+      setPersonas(personaData)
     } catch (error) {
       console.error("Error loading personas:", error)
-      setPersonas([])
-    } finally {
-      setIsLoading(false)
     }
   }
 
-  const handleInfoSubmit = (info: { firstName: string; lastName: string; email: string; phone: string }) => {
+  const handleInfoComplete = (info: RespondentData) => {
+    console.log("Respondent info completed:", info)
     setRespondentInfo(info)
     setCurrentStep("persona")
   }
 
   const handlePersonaSelect = (persona: PersonaConfig) => {
-    console.log("Selected persona:", persona)
+    console.log("Persona selected:", persona)
     setSelectedPersona(persona)
     setCurrentStep("questions")
   }
 
   const handleQuestionsComplete = async (questionAnswers: string[]) => {
-    if (!selectedPersona) return
-
+    console.log("Questions completed:", questionAnswers)
     setAnswers(questionAnswers)
-    setIsSubmitting(true)
+    setIsLoading(true)
+    setCurrentStep("results")
+
+    if (!respondentInfo || !selectedPersona) {
+      console.error("Missing respondent info or persona")
+      setAnalysis(null)
+      setIsLoading(false)
+      return
+    }
 
     try {
       const result = await saveResponse({
-        first_name: respondentInfo.firstName,
-        last_name: respondentInfo.lastName,
+        firstName: respondentInfo.firstName,
+        lastName: respondentInfo.lastName,
         email: respondentInfo.email,
-        phone: respondentInfo.phone || undefined,
+        phone: respondentInfo.phone,
         persona: selectedPersona.title,
         questions: selectedPersona.questions,
         answers: questionAnswers,
       })
 
-      setSubmitResult(result)
-      setCurrentStep("results")
+      console.log("Save response result:", result)
+
+      if (result.success && result.analysis) {
+        try {
+          const parsedAnalysis = JSON.parse(result.analysis)
+          setAnalysis(parsedAnalysis)
+        } catch (parseError) {
+          console.error("Error parsing analysis:", parseError)
+          setAnalysis({ summary: result.analysis })
+        }
+      } else {
+        console.error("Failed to save response:", result.error)
+        setAnalysis(null)
+      }
     } catch (error) {
-      console.error("Error submitting assessment:", error)
-      setSubmitResult({
-        success: false,
-        error: "Failed to submit assessment. Please try again.",
-      })
-      setCurrentStep("results")
+      console.error("Error saving response:", error)
+      setAnalysis(null)
     } finally {
-      setIsSubmitting(false)
+      setIsLoading(false)
     }
   }
 
-  const handleStartOver = () => {
+  const handleRestart = () => {
+    setCurrentStep("info")
+    setRespondentInfo(null)
+    setSelectedPersona(null)
+    setAnswers([])
+    setAnalysis(null)
+  }
+
+  const handleBackToInfo = () => {
     setCurrentStep("info")
     setSelectedPersona(null)
-    setRespondentInfo({ firstName: "", lastName: "", email: "", phone: "" })
-    setAnswers([])
-    setSubmitResult(null)
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <h2 className="text-xl font-semibold mb-2">Loading Assessment</h2>
-            <p className="text-gray-600">Please wait while we prepare your assessment...</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+  const handleBackToPersona = () => {
+    setCurrentStep("persona")
   }
 
-  if (isSubmitting) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
-            <h2 className="text-xl font-semibold mb-2">Submitting Assessment</h2>
-            <p className="text-gray-600">Please wait while we process your responses...</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+  if (currentStep === "info") {
+    return <RespondentInfo onComplete={handleInfoComplete} />
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {currentStep === "info" && <RespondentInfo onComplete={handleInfoSubmit} />}
+  if (currentStep === "persona") {
+    return <PersonaSelector personas={personas} onSelect={handlePersonaSelect} onBack={handleBackToInfo} />
+  }
 
-      {currentStep === "persona" && (
-        <PersonaSelector
-          personas={personas}
-          onPersonaSelect={handlePersonaSelect}
-          onBack={() => setCurrentStep("info")}
-        />
-      )}
+  if (currentStep === "questions" && selectedPersona) {
+    return <Questionnaire persona={selectedPersona} onComplete={handleQuestionsComplete} onBack={handleBackToPersona} />
+  }
 
-      {currentStep === "questions" && selectedPersona && (
-        <Questionnaire
-          persona={selectedPersona}
-          onComplete={handleQuestionsComplete}
-          onBack={() => setCurrentStep("persona")}
-        />
-      )}
+  if (currentStep === "results") {
+    return <Results analysis={analysis} onRestart={handleRestart} />
+  }
 
-      {currentStep === "results" && (
-        <Results
-          result={submitResult}
-          respondentInfo={respondentInfo}
-          persona={selectedPersona}
-          onStartOver={handleStartOver}
-        />
-      )}
-    </div>
-  )
+  return null
 }
