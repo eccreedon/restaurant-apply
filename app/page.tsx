@@ -78,8 +78,14 @@ export default function Home() {
 
       console.log("Save response result:", result)
 
-      if (result.success && result.data?.analysis) {
-        setAnalysis(result.data.analysis)
+      if (result.success && result.analysis) {
+        try {
+          const parsedAnalysis = JSON.parse(result.analysis)
+          setAnalysis(parsedAnalysis)
+        } catch (parseError) {
+          console.error("Error parsing analysis:", parseError)
+          setAnalysis({ summary: result.analysis })
+        }
       } else {
         console.error("Failed to save response:", result.error)
         setAnalysis(null)
