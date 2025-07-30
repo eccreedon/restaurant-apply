@@ -259,36 +259,72 @@ function ResponseDetails({ response }: { response: ResponseData }) {
               <p className="text-gray-700 mt-1">{response.analysis.summary}</p>
             </div>
 
+            {/* Score Display */}
+            {response.analysis.score && (
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-gray-900">Overall Score:</span>
+                  <span className="text-2xl font-bold text-blue-600">{response.analysis.score}</span>
+                </div>
+
+                {/* Category Scores */}
+                {response.analysis.category_scores && (
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div>Technical: {response.analysis.category_scores.technical_knowledge}/10</div>
+                    <div>Communication: {response.analysis.category_scores.communication}/10</div>
+                    <div>Problem Solving: {response.analysis.category_scores.problem_solving}/10</div>
+                    <div>Experience: {response.analysis.category_scores.experience}/10</div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <p className="text-green-600 font-medium">Strengths:</p>
-              <ul className="list-disc list-inside text-gray-700 mt-1 space-y-1">
-                {response.analysis.strengths && typeof response.analysis.strengths === "string" ? (
-                  <li>{response.analysis.strengths}</li>
-                ) : (
-                  <>
-                    <li>Completed all required questions</li>
-                    <li>Showed engagement with the process</li>
-                  </>
-                )}
-              </ul>
+              <p className="text-gray-700 mt-1">{response.analysis.strengths}</p>
             </div>
 
             <div>
-              <p className="text-orange-600 font-medium">Concerns:</p>
-              <ul className="list-disc list-inside text-gray-700 mt-1 space-y-1">
-                {response.analysis.areas_for_improvement &&
-                typeof response.analysis.areas_for_improvement === "string" ? (
-                  <li>{response.analysis.areas_for_improvement}</li>
-                ) : (
-                  <li>AI analysis temporarily unavailable</li>
-                )}
-              </ul>
+              <p className="text-orange-600 font-medium">Areas for Improvement:</p>
+              <p className="text-gray-700 mt-1">{response.analysis.areas_for_improvement}</p>
             </div>
+
+            {/* Red Flags */}
+            {response.analysis.red_flags && response.analysis.red_flags.length > 0 && (
+              <div>
+                <p className="text-red-600 font-medium">Red Flags:</p>
+                <ul className="list-disc list-inside text-gray-700 mt-1 space-y-1">
+                  {response.analysis.red_flags.map((flag: string, index: number) => (
+                    <li key={index}>{flag}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Standout Responses */}
+            {response.analysis.standout_responses && response.analysis.standout_responses.length > 0 && (
+              <div>
+                <p className="text-green-600 font-medium">Standout Responses:</p>
+                <ul className="list-disc list-inside text-gray-700 mt-1 space-y-1">
+                  {response.analysis.standout_responses.map((response: string, index: number) => (
+                    <li key={index}>{response}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div>
               <p className="text-blue-600 font-medium">Recommendation:</p>
               <p className="text-gray-700 mt-1">{response.analysis.recommendations || "Manual Review Required"}</p>
             </div>
+
+            {/* Detailed Analysis */}
+            {response.analysis.detailed_analysis && (
+              <div>
+                <p className="text-gray-600 font-medium">Detailed Analysis:</p>
+                <p className="text-gray-700 mt-1 text-sm">{response.analysis.detailed_analysis}</p>
+              </div>
+            )}
           </div>
         </div>
       )}
