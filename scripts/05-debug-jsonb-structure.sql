@@ -1,29 +1,43 @@
--- Let's see what your actual JSONB questions structure looks like
-SELECT 
-    id,
-    title,
-    questions,
-    jsonb_typeof(questions) as questions_type,
-    jsonb_array_length(questions) as questions_count
-FROM personas 
-LIMIT 2;
-
--- Show the first question from each persona to understand the structure
-SELECT 
-    id,
-    title,
-    questions->0 as first_question,
-    jsonb_typeof(questions->0) as first_question_type
-FROM personas 
-WHERE jsonb_array_length(questions) > 0;
-
--- Also check your responses structure
-SELECT 
-    id,
-    persona,
-    questions[1] as first_question,
-    answers[1] as first_answer,
-    array_length(questions, 1) as question_count,
-    array_length(answers, 1) as answer_count
-FROM responses 
-LIMIT 2;
+-- Debug the JSONB structure in responses
+DO $$
+DECLARE
+  sample_record RECORD;
+  question_array JSONB;
+  answer_array JSONB;
+  i INTEGER;
+BEGIN
+  RAISE NOTICE 'Debugging JSONB structure in responses table...';
+  
+  -- Get a sample record
+  SELECT * INTO sample_record 
+  FROM responses 
+  LIMIT 1;
+  
+  IF sample_record IS NULL THEN
+    RAISE NOTICE 'No records found in responses table';
+    RETURN;
+  END IF;
+  
+  RAISE NOTICE 'Sample record ID: %', sample_record.id;
+  RAISE NOTICE 'Persona: %', sample_record.persona;
+  
+  -- Analyze questions structure
+  question_array := sample_record.questions;
+  RAISE NOTICE 'Questions type: %', jsonb_typeof(question_array);
+  RAISE NOTICE 'Questions length: %', jsonb_array_length(question_array);
+  RAISE NOTICE 'First question: %', question_array->0;
+  
+  -- Analyze answers structure  
+  answer_array := sample_record.answers;
+  RAISE NOTICE 'Answers type: %', jsonb_typeof(answer_array);
+  RAISE NOTICE 'Answers length: %', jsonb_array_length(answer_array);
+  RAISE NOTICE 'First answer: %', answer_array->0;
+  
+  -- Show all questions and answers
+  FOR i IN 0..LEAST(jsonb_array_length(question_array)-1, jsonb_array_length(answer_array)-1) LOOP
+    RAISE NOTICE 'Q%: % | A%: %', 
+      i+1, question_array->i, 
+      i+1, answer_array->i;
+  END LOOP;
+  
+END $$;

@@ -8,8 +8,8 @@ export interface ResponseData {
   email: string
   phone?: string
   persona: string
-  questions: string[] // Keep for compatibility with existing code
-  answers: string[] // Keep for compatibility with existing code
+  questions: string[]
+  answers: string[]
   analysis?: any
   created_at?: string
 }
@@ -31,6 +31,46 @@ export interface WideResponseData {
   q8_response?: string
   q9_response?: string
   q10_response?: string
+  question_1?: string
+  question_2?: string
+  question_3?: string
+  question_4?: string
+  question_5?: string
+  question_6?: string
+  question_7?: string
+  question_8?: string
+  question_9?: string
+  question_10?: string
+  question_11?: string
+  question_12?: string
+  question_13?: string
+  question_14?: string
+  question_15?: string
+  question_16?: string
+  question_17?: string
+  question_18?: string
+  question_19?: string
+  question_20?: string
+  answer_1?: string
+  answer_2?: string
+  answer_3?: string
+  answer_4?: string
+  answer_5?: string
+  answer_6?: string
+  answer_7?: string
+  answer_8?: string
+  answer_9?: string
+  answer_10?: string
+  answer_11?: string
+  answer_12?: string
+  answer_13?: string
+  answer_14?: string
+  answer_15?: string
+  answer_16?: string
+  answer_17?: string
+  answer_18?: string
+  answer_19?: string
+  answer_20?: string
   analysis?: any
   created_at?: string
 }
@@ -42,7 +82,15 @@ export interface SaveResponseResult {
   analysis?: any
 }
 
-export async function saveResponse(responseData: Omit<ResponseData, "id" | "created_at">): Promise<SaveResponseResult> {
+export async function saveResponse(responseData: {
+  first_name: string
+  last_name: string
+  email: string
+  phone?: string
+  persona: string
+  questions: string[]
+  answers: string[]
+}): Promise<{ success: boolean; error?: string }> {
   try {
     console.log("Starting to save response for:", responseData.first_name, responseData.last_name)
 
@@ -87,7 +135,7 @@ export async function saveResponse(responseData: Omit<ResponseData, "id" | "crea
     }
 
     // Prepare data for wide format database
-    const wideResponseData: Omit<WideResponseData, "id" | "created_at"> = {
+    const insertData: any = {
       persona_id: personaData.id,
       first_name: responseData.first_name.trim(),
       last_name: responseData.last_name.trim(),
@@ -96,46 +144,26 @@ export async function saveResponse(responseData: Omit<ResponseData, "id" | "crea
       analysis: analysis,
     }
 
-    // Add answers to Q1-Q10 columns
-    for (let i = 0; i < Math.min(responseData.answers.length, 10); i++) {
-      const columnName = `q${i + 1}_response` as keyof WideResponseData
-      ;(wideResponseData as any)[columnName] = responseData.answers[i]
+    // Add questions and answers (up to 20 pairs)
+    for (let i = 0; i < Math.min(responseData.questions.length, responseData.answers.length, 20); i++) {
+      insertData[`question_${i + 1}`] = responseData.questions[i]
+      insertData[`answer_${i + 1}`] = responseData.answers[i]
     }
 
-    console.log("Saving to wide_responses table with data:", wideResponseData)
+    console.log("Saving to wide_responses table with data:", insertData)
 
     // Save to wide_responses table
-    const { data, error } = await supabase.from("wide_responses").insert([wideResponseData]).select().single()
+    const { error } = await supabase.from("wide_responses").insert([insertData])
 
     if (error) {
       console.error("Supabase error:", error)
       throw new Error(`Database error: ${error.message}`)
     }
 
-    if (!data) {
-      throw new Error("No data returned from database insert")
-    }
-
-    console.log("Response saved successfully:", data)
-
-    // Convert back to original format for compatibility
-    const compatibleData: ResponseData = {
-      id: data.id,
-      first_name: data.first_name,
-      last_name: data.last_name,
-      email: data.email,
-      phone: data.phone,
-      persona: responseData.persona, // Keep original persona title
-      questions: responseData.questions,
-      answers: responseData.answers,
-      analysis: data.analysis,
-      created_at: data.created_at,
-    }
+    console.log("Response saved successfully")
 
     return {
       success: true,
-      data: compatibleData,
-      analysis: analysis,
     }
   } catch (error) {
     console.error("Error saving response:", error)
@@ -151,49 +179,45 @@ export async function getAllResponses(): Promise<ResponseData[]> {
   try {
     console.log("Fetching all responses from wide_responses table...")
 
-    const { data, error } = await supabase
-      .from("wide_responses")
-      .select(`
-        *,
-        personas (
-          title
-        )
-      `)
-      .order("created_at", { ascending: false })
+    const { data, error } = await supabase.from("wide_responses").select("*").order("created_at", { ascending: false })
 
     if (error) {
       console.error("Error fetching responses:", error)
-      throw error
+      return []
     }
 
     console.log(`Fetched ${data?.length || 0} responses`)
 
-    // Convert wide format back to original format for compatibility
-    const compatibleResponses: ResponseData[] = (data || []).map((response) => {
-      // Collect answers from Q1-Q10 columns
-      const answers: string[] = []
-      for (let i = 1; i <= 10; i++) {
-        const answer = (response as any)[`q${i}_response`]
-        if (answer) {
-          answers.push(answer)
+    return (
+      data?.map((row) => {
+        // Extract questions and answers from the wide format
+        const questions: string[] = []
+        const answers: string[] = []
+
+        for (let i = 1; i <= 20; i++) {
+          const question = row[`question_${i}`]
+          const answer = row[`answer_${i}`]
+
+          if (question && answer) {
+            questions.push(question)
+            answers.push(answer)
+          }
         }
-      }
 
-      return {
-        id: response.id,
-        first_name: response.first_name,
-        last_name: response.last_name,
-        email: response.email,
-        phone: response.phone,
-        persona: (response as any).personas?.title || "Unknown",
-        questions: [], // Would need to fetch from persona_questions if needed
-        answers: answers,
-        analysis: response.analysis,
-        created_at: response.created_at,
-      }
-    })
-
-    return compatibleResponses
+        return {
+          id: row.id,
+          first_name: row.first_name,
+          last_name: row.last_name,
+          email: row.email,
+          phone: row.phone,
+          persona: row.persona,
+          questions,
+          answers,
+          analysis: row.analysis,
+          created_at: row.created_at,
+        }
+      }) || []
+    )
   } catch (error) {
     console.error("Error in getAllResponses:", error)
     return []
@@ -204,27 +228,21 @@ export async function getResponseById(id: string): Promise<ResponseData | null> 
   try {
     console.log("Fetching response from wide_responses table:", id)
 
-    const { data, error } = await supabase
-      .from("wide_responses")
-      .select(`
-        *,
-        personas (
-          title
-        )
-      `)
-      .eq("id", id)
-      .single()
+    const { data, error } = await supabase.from("wide_responses").select("*").eq("id", id).single()
 
     if (error) {
       console.error("Error fetching response:", error)
-      throw error
+      return null
     }
 
     // Convert wide format back to original format
+    const questions: string[] = []
     const answers: string[] = []
-    for (let i = 1; i <= 10; i++) {
-      const answer = (data as any)[`q${i}_response`]
-      if (answer) {
+    for (let i = 1; i <= 20; i++) {
+      const question = data[`question_${i}`]
+      const answer = data[`answer_${i}`]
+      if (question && answer) {
+        questions.push(question)
         answers.push(answer)
       }
     }
@@ -235,9 +253,9 @@ export async function getResponseById(id: string): Promise<ResponseData | null> 
       last_name: data.last_name,
       email: data.email,
       phone: data.phone,
-      persona: (data as any).personas?.title || "Unknown",
-      questions: [], // Would need to fetch from persona_questions if needed
-      answers: answers,
+      persona: data.persona,
+      questions,
+      answers,
       analysis: data.analysis,
       created_at: data.created_at,
     }
@@ -256,7 +274,7 @@ export async function deleteResponse(id: string): Promise<boolean> {
     const { error } = await supabase.from("wide_responses").delete().eq("id", id)
     if (error) {
       console.error("Error deleting response:", error)
-      throw error
+      return false
     }
     console.log("Response deleted successfully")
     return true

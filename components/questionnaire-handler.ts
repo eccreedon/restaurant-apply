@@ -1,44 +1,43 @@
-import {
-  createResponseSession,
-  saveResponse,
-  completeResponseSession,
-  getQuestionsByPersona,
-} from "@/lib/supabase-helpers"
-import type { Question } from "@/types/question" // Declare the Question variable
+import type { PersonaConfig } from "@/lib/persona-db"
+
+export interface QuestionnaireData {
+  respondentInfo: {
+    firstName: string
+    lastName: string
+    email: string
+    phone: string
+  }
+  selectedPersona: PersonaConfig
+  answers: string[]
+}
 
 export class QuestionnaireHandler {
-  private sessionId: string | null = null
-  private questions: Question[] = []
+  private data: Partial<QuestionnaireData> = {}
 
-  async initializeSession(personaId: string, respondentData?: { email?: string; name?: string }) {
-    // Get questions for this persona
-    this.questions = await getQuestionsByPersona(personaId)
-
-    // Create response session
-    const session = await createResponseSession(personaId, respondentData)
-    this.sessionId = session.id
-
-    return this.questions
+  setRespondentInfo(info: QuestionnaireData["respondentInfo"]) {
+    this.data.respondentInfo = info
   }
 
-  async saveAnswer(questionIndex: number, answer: string) {
-    if (!this.sessionId || !this.questions[questionIndex]) {
-      throw new Error("Session not initialized or invalid question index")
+  setSelectedPersona(persona: PersonaConfig) {
+    this.data.selectedPersona = persona
+  }
+
+  setAnswers(answers: string[]) {
+    this.data.answers = answers
+  }
+
+  getData(): QuestionnaireData | null {
+    if (this.data.respondentInfo && this.data.selectedPersona && this.data.answers) {
+      return this.data as QuestionnaireData
     }
-
-    const question = this.questions[questionIndex]
-    await saveResponse(this.sessionId, question.id, answer)
+    return null
   }
 
-  async completeQuestionnaire() {
-    if (!this.sessionId) {
-      throw new Error("Session not initialized")
-    }
-
-    await completeResponseSession(this.sessionId)
+  reset() {
+    this.data = {}
   }
 
-  getQuestions() {
-    return this.questions
+  isComplete(): boolean {
+    return !!(this.data.respondentInfo && this.data.selectedPersona && this.data.answers)
   }
 }

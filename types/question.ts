@@ -1,8 +1,21 @@
 export interface Question {
   id: string
-  persona_id: string
-  question_text: string
-  question_order: number
-  question_type: string
-  created_at: string
+  text: string
+  type: "text" | "multiple-choice" | "rating"
+  required: boolean
+  options?: string[]
+}
+
+export interface QuestionResponse {
+  questionId: string
+  answer: string | number
+  timestamp: Date
+}
+
+export interface AssessmentResult {
+  respondentId: string
+  personaId: string
+  responses: QuestionResponse[]
+  completedAt: Date
+  score?: number
 }

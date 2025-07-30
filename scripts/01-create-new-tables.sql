@@ -1,41 +1,49 @@
 -- Create the new normalized tables
-CREATE TABLE personas (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL,
-  description text,
-  created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS personas (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  icon TEXT NOT NULL,
+  color TEXT NOT NULL,
+  questions TEXT[], -- Array of questions for backward compatibility
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE questions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  persona_id uuid REFERENCES personas(id) ON DELETE CASCADE,
-  question_text text NOT NULL,
-  question_order integer NOT NULL,
-  question_type text DEFAULT 'text',
-  created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS persona_questions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  persona_id UUID REFERENCES personas(id) ON DELETE CASCADE,
+  question_text TEXT NOT NULL,
+  question_number INTEGER NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(persona_id, question_number)
 );
 
 CREATE TABLE response_sessions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  persona_id uuid REFERENCES personas(id) ON DELETE CASCADE,
-  respondent_email text,
-  respondent_name text,
-  started_at timestamp with time zone DEFAULT now(),
-  completed_at timestamp with time zone,
-  status text DEFAULT 'in_progress'
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  persona_id UUID REFERENCES personas(id) ON DELETE CASCADE,
+  respondent_email TEXT,
+  respondent_name TEXT,
+  started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  completed_at TIMESTAMP WITH TIME ZONE,
+  status TEXT DEFAULT 'in_progress'
 );
 
-CREATE TABLE responses (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id uuid REFERENCES response_sessions(id) ON DELETE CASCADE,
-  question_id uuid REFERENCES questions(id) ON DELETE CASCADE,
-  response_text text NOT NULL,
-  created_at timestamp with time zone DEFAULT now()
+CREATE TABLE IF NOT EXISTS responses (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  phone TEXT,
+  persona TEXT NOT NULL,
+  questions JSONB NOT NULL,
+  answers JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Add indexes for better performance
-CREATE INDEX idx_questions_persona_id ON questions(persona_id);
-CREATE INDEX idx_questions_order ON questions(persona_id, question_order);
+CREATE INDEX IF NOT EXISTS idx_persona_questions_persona_id ON persona_questions(persona_id);
+CREATE INDEX IF NOT EXISTS idx_persona_questions_number ON persona_questions(persona_id, question_number);
+CREATE INDEX IF NOT EXISTS idx_responses_persona ON responses(persona);
+CREATE INDEX IF NOT EXISTS idx_responses_created_at ON responses(created_at);
 CREATE INDEX idx_response_sessions_persona ON response_sessions(persona_id);
-CREATE INDEX idx_responses_session ON responses(session_id);
-CREATE INDEX idx_responses_question ON responses(question_id);

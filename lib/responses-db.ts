@@ -1,5 +1,4 @@
 import { supabase } from "./supabase"
-import { analyzeAnswers } from "./ai-analysis"
 
 export interface ResponseData {
   id?: string
@@ -14,275 +13,99 @@ export interface ResponseData {
   created_at?: string
 }
 
-export interface SaveResponseResult {
-  success: boolean
-  error?: string
-  data?: ResponseData
-  analysis?: any
-}
-
-export async function saveResponse(responseData: Omit<ResponseData, "id" | "created_at">): Promise<SaveResponseResult> {
-  try {
-    console.log("Starting to save response for:", responseData.first_name, responseData.last_name)
-
-    // Validate required fields
-    if (!responseData.first_name?.trim()) {
-      throw new Error("First name is required")
-    }
-    if (!responseData.last_name?.trim()) {
-      throw new Error("Last name is required")
-    }
-    if (!responseData.email?.trim()) {
-      throw new Error("Email is required")
-    }
-    if (!responseData.persona?.trim()) {
-      throw new Error("Persona is required")
-    }
-    if (!responseData.answers?.length) {
-      throw new Error("Answers are required")
-    }
-
-    console.log("Validation passed, performing AI analysis...")
-
-    // Get AI analysis (now with better error handling)
-    let analysis = null
-    try {
-      analysis = await analyzeAnswers(responseData.questions, responseData.answers, responseData.persona)
-      console.log("AI analysis completed successfully")
-    } catch (error) {
-      console.error("AI analysis failed, continuing without analysis:", error)
-      // Continue without analysis - this is not a critical failure
-      analysis = {
-        summary: `Assessment completed for ${responseData.persona} position.`,
-        strengths: "Responses recorded successfully.",
-        recommendations: "Manual review recommended.",
-        score: "Pending review",
-      }
-    }
-
-    // Map persona title to persona ID
-    const { data: personaData, error: personaError } = await supabase
-      .from("personas")
-      .select("id")
-      .eq("title", responseData.persona)
-      .single()
-
-    if (personaError || !personaData) {
-      throw new Error(`Could not find persona: ${responseData.persona}`)
-    }
-
-    // Prepare data for wide format database
-    const wideResponseData: any = {
-      persona_id: personaData.id,
-      first_name: responseData.first_name.trim(),
-      last_name: responseData.last_name.trim(),
-      email: responseData.email.trim(),
-      phone: responseData.phone?.trim() || null,
-      analysis: analysis,
-    }
-
-    // Add answers to Q1-Q10 columns
-    for (let i = 0; i < Math.min(responseData.answers.length, 10); i++) {
-      wideResponseData[`q${i + 1}_response`] = responseData.answers[i]
-    }
-
-    console.log("Saving to wide_responses table...")
-
-    // Save to wide_responses table
-    const { data, error } = await supabase.from("wide_responses").insert([wideResponseData]).select().single()
-
-    if (error) {
-      console.error("Supabase error:", error)
-      throw new Error(`Database error: ${error.message}`)
-    }
-
-    if (!data) {
-      throw new Error("No data returned from database insert")
-    }
-
-    console.log("Response saved successfully:", data.id)
-
-    // Convert back to original format for compatibility
-    const compatibleData: ResponseData = {
-      id: data.id,
-      first_name: data.first_name,
-      last_name: data.last_name,
-      email: data.email,
-      phone: data.phone,
-      persona: responseData.persona, // Keep original persona title
-      questions: responseData.questions,
-      answers: responseData.answers,
-      analysis: data.analysis,
-      created_at: data.created_at,
-    }
-
-    return {
-      success: true,
-      data: compatibleData,
-      analysis: analysis,
-    }
-  } catch (error) {
-    console.error("Error saving response:", error)
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
-    return {
-      success: false,
-      error: errorMessage,
-    }
-  }
-}
-
 export async function getAllResponses(): Promise<ResponseData[]> {
   try {
-    console.log("Fetching all responses from wide_responses table...")
-
-    const { data, error } = await supabase
-      .from("wide_responses")
-      .select(`
-        *,
-        personas (
-          title
-        )
-      `)
-      .order("created_at", { ascending: false })
+    const { data, error } = await supabase.from("wide_responses").select("*").order("created_at", { ascending: false })
 
     if (error) {
       console.error("Error fetching responses:", error)
-      throw error
+      return []
     }
 
-    console.log(`Fetched ${data?.length || 0} responses`)
+    return (
+      data?.map((row) => {
+        const questions: string[] = []
+        const answers: string[] = []
 
-    // Convert wide format back to original format for compatibility
-    const compatibleResponses: ResponseData[] = (data || []).map((response) => {
-      // Collect answers from Q1-Q10 columns
-      const answers: string[] = []
-      for (let i = 1; i <= 10; i++) {
-        const answer = (response as any)[`q${i}_response`]
-        if (answer) {
-          answers.push(answer)
+        for (let i = 1; i <= 20; i++) {
+          const question = row[`question_${i}`]
+          const answer = row[`answer_${i}`]
+
+          if (question && answer) {
+            questions.push(question)
+            answers.push(answer)
+          }
         }
-      }
 
-      return {
-        id: response.id,
-        first_name: response.first_name,
-        last_name: response.last_name,
-        email: response.email,
-        phone: response.phone,
-        persona: (response as any).personas?.title || "Unknown",
-        questions: [], // Would need to fetch from persona_questions if needed
-        answers: answers,
-        analysis: response.analysis,
-        created_at: response.created_at,
-      }
-    })
-
-    return compatibleResponses
+        return {
+          id: row.id,
+          first_name: row.first_name,
+          last_name: row.last_name,
+          email: row.email,
+          phone: row.phone,
+          persona: row.persona,
+          questions,
+          answers,
+          analysis: row.analysis,
+          created_at: row.created_at,
+        }
+      }) || []
+    )
   } catch (error) {
     console.error("Error in getAllResponses:", error)
     return []
   }
 }
 
-export async function getResponseById(id: string): Promise<ResponseData | null> {
+export async function saveResponse(data: {
+  first_name: string
+  last_name: string
+  email: string
+  phone?: string
+  persona: string
+  questions: string[]
+  answers: string[]
+}): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log("Fetching response from wide_responses table:", id)
-
-    const { data, error } = await supabase
-      .from("wide_responses")
-      .select(`
-        *,
-        personas (
-          title
-        )
-      `)
-      .eq("id", id)
-      .single()
-
-    if (error) {
-      console.error("Error fetching response:", error)
-      throw error
-    }
-
-    // Convert wide format back to original format
-    const answers: string[] = []
-    for (let i = 1; i <= 10; i++) {
-      const answer = (data as any)[`q${i}_response`]
-      if (answer) {
-        answers.push(answer)
-      }
-    }
-
-    const compatibleResponse: ResponseData = {
-      id: data.id,
+    const insertData: any = {
       first_name: data.first_name,
       last_name: data.last_name,
       email: data.email,
       phone: data.phone,
-      persona: (data as any).personas?.title || "Unknown",
-      questions: [], // Would need to fetch from persona_questions if needed
-      answers: answers,
-      analysis: data.analysis,
-      created_at: data.created_at,
+      persona: data.persona,
     }
 
-    console.log("Response fetched successfully:", compatibleResponse.id)
-    return compatibleResponse
+    for (let i = 0; i < Math.min(data.questions.length, data.answers.length, 20); i++) {
+      insertData[`question_${i + 1}`] = data.questions[i]
+      insertData[`answer_${i + 1}`] = data.answers[i]
+    }
+
+    const { error } = await supabase.from("wide_responses").insert(insertData)
+
+    if (error) {
+      console.error("Error saving response:", error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
   } catch (error) {
-    console.error("Error in getResponseById:", error)
-    return null
+    console.error("Error in saveResponse:", error)
+    return { success: false, error: "An unexpected error occurred" }
   }
 }
 
 export async function deleteResponse(id: string): Promise<boolean> {
   try {
-    console.log("Deleting response from wide_responses table:", id)
     const { error } = await supabase.from("wide_responses").delete().eq("id", id)
+
     if (error) {
       console.error("Error deleting response:", error)
-      throw error
+      return false
     }
-    console.log("Response deleted successfully")
+
     return true
   } catch (error) {
     console.error("Error in deleteResponse:", error)
     return false
-  }
-}
-
-// New function to export responses in spreadsheet format
-export async function exportPersonaResponses(personaId: string) {
-  try {
-    const { data: questions, error: questionsError } = await supabase
-      .from("persona_questions")
-      .select("question_text, question_number")
-      .eq("persona_id", personaId)
-      .order("question_number", { ascending: true })
-
-    if (questionsError) throw questionsError
-
-    const { data: responses, error: responsesError } = await supabase
-      .from("wide_responses")
-      .select("*")
-      .eq("persona_id", personaId)
-      .order("created_at", { ascending: false })
-
-    if (responsesError) throw responsesError
-
-    return {
-      questions: questions || [],
-      responses: responses || [],
-      headers: [
-        "First Name",
-        "Last Name",
-        "Email",
-        "Phone",
-        ...(questions || []).map((q) => `Q${q.question_number}: ${q.question_text}`),
-        "Created At",
-      ],
-    }
-  } catch (error) {
-    console.error("Error exporting responses:", error)
-    return null
   }
 }

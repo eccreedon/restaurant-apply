@@ -11,45 +11,23 @@ import {
   deletePersonaFromDB,
   type PersonaConfig,
 } from "@/lib/persona-db"
+import { uploadPersonaImage } from "@/lib/blob-storage"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trash2, Edit, Plus, Users, FileText, BarChart3, Eye, Mail, Calendar } from "lucide-react"
-
-// Common emojis for restaurant/service industry
-const EMOJI_OPTIONS = [
-  { value: "👨‍🍳", label: "👨‍🍳 Male Chef" },
-  { value: "👩‍🍳", label: "👩‍🍳 Female Chef" },
-  { value: "🧑‍🍳", label: "🧑‍🍳 Chef" },
-  { value: "🍽️", label: "🍽️ Plate" },
-  { value: "🥘", label: "🥘 Food" },
-  { value: "🍕", label: "🍕 Pizza" },
-  { value: "🍔", label: "🍔 Burger" },
-  { value: "🥗", label: "🥗 Salad" },
-  { value: "🍰", label: "🍰 Cake" },
-  { value: "☕", label: "☕ Coffee" },
-  { value: "🍷", label: "🍷 Wine" },
-  { value: "🍺", label: "🍺 Beer" },
-  { value: "🥤", label: "🥤 Drink" },
-  { value: "🍴", label: "🍴 Utensils" },
-  { value: "🔪", label: "🔪 Knife" },
-  { value: "🥄", label: "🥄 Spoon" },
-  { value: "👥", label: "👥 People" },
-  { value: "💼", label: "💼 Business" },
-  { value: "🏪", label: "🏪 Store" },
-  { value: "🏢", label: "🏢 Building" },
-  { value: "⭐", label: "⭐ Star" },
-  { value: "🎯", label: "🎯 Target" },
-  { value: "💪", label: "💪 Strong" },
-  { value: "🚀", label: "🚀 Rocket" },
-  { value: "🔥", label: "🔥 Fire" },
-]
+import { Trash2, Edit, Plus, Users, FileText, BarChart3, Eye, Mail, Calendar, Upload } from "lucide-react"
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("responses")
@@ -413,7 +391,7 @@ function PersonasTab({
               Add Persona
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <PersonaForm
               persona={editingPersona}
               onSave={async (persona) => {
@@ -430,16 +408,16 @@ function PersonasTab({
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {personas.map((persona) => (
-          <Card key={persona.id}>
-            <CardHeader>
+          <Card key={persona.id} className="h-fit">
+            <CardHeader className="pb-3">
               <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{persona.title}</CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">{persona.description}</p>
+                <div className="flex-1">
+                  <CardTitle className="text-lg mb-2">{persona.title}</CardTitle>
+                  <p className="text-sm text-gray-600 line-clamp-2">{persona.description}</p>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex space-x-1 ml-2">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -456,20 +434,19 @@ function PersonasTab({
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Questions:</span>
-                  <Badge variant="secondary">{persona.questions.length}</Badge>
+            <CardContent className="pt-0">
+              {persona.image && (
+                <div className="mb-3">
+                  <img
+                    src={persona.image || "/placeholder.svg"}
+                    alt={persona.title}
+                    className="w-full h-24 object-cover rounded-lg"
+                  />
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Emoji:</span>
-                  <span className="text-lg">{persona.icon}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Color:</span>
-                  <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: persona.color }} />
-                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Questions:</span>
+                <Badge variant="secondary">{persona.questions.length}</Badge>
               </div>
             </CardContent>
           </Card>
@@ -492,10 +469,12 @@ function PersonaForm({
   const [formData, setFormData] = useState({
     title: persona?.title || "",
     description: persona?.description || "",
-    emoji: persona?.icon || "👨‍🍳",
-    color: persona?.color || "#3B82F6",
+    emoji: persona?.icon || "👤", // Default emoji
+    color: persona?.color || "#6B7280", // Default gray color
     questions: persona?.questions || [""],
+    image: persona?.image || "",
   })
+  const [isUploading, setIsUploading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -516,6 +495,28 @@ function PersonaForm({
       onSave(personaData as PersonaConfig)
     } catch (error) {
       console.error("Error saving persona:", error)
+    }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    try {
+      // Try to use Vercel Blob storage first
+      const imageUrl = await uploadPersonaImage(file)
+      setFormData({ ...formData, image: imageUrl })
+    } catch (error) {
+      console.warn("Blob storage failed, falling back to base64:", error)
+      // Fallback to base64 if blob storage fails
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        setFormData({ ...formData, image: event.target?.result as string })
+      }
+      reader.readAsDataURL(file)
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -546,43 +547,51 @@ function PersonaForm({
     <>
       <DialogHeader>
         <DialogTitle>{persona ? "Edit Persona" : "Add New Persona"}</DialogTitle>
+        <DialogDescription>
+          {persona ? "Update the persona details and questions." : "Create a new persona with custom questions."}
+        </DialogDescription>
       </DialogHeader>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="emoji">Emoji</Label>
-            <Select value={formData.emoji} onValueChange={(value) => setFormData({ ...formData, emoji: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select an emoji" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {EMOJI_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div>
+          <Label htmlFor="title">Title</Label>
+          <Input
+            id="title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            required
+          />
         </div>
 
         <div>
-          <Label htmlFor="color">Color</Label>
-          <Input
-            id="color"
-            type="color"
-            value={formData.color}
-            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-          />
+          <Label htmlFor="image">Persona Image</Label>
+          <div className="space-y-2">
+            <Input id="image" type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading} />
+            {isUploading && (
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Upload className="h-4 w-4 animate-pulse" />
+                <span>Uploading image...</span>
+              </div>
+            )}
+            {formData.image && !isUploading && (
+              <div className="mt-2">
+                <img
+                  src={formData.image || "/placeholder.svg"}
+                  alt="Preview"
+                  className="w-32 h-32 object-cover rounded-lg border"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData({ ...formData, image: "" })}
+                  className="mt-2"
+                >
+                  Remove Image
+                </Button>
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-gray-500 mt-1">Upload an image to represent this persona</p>
         </div>
 
         <div>
@@ -603,14 +612,14 @@ function PersonaForm({
               Add Question
             </Button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-40 overflow-y-auto">
             {formData.questions.map((question, index) => (
               <div key={index} className="flex gap-2">
                 <Textarea
                   value={question}
                   onChange={(e) => updateQuestion(index, e.target.value)}
                   placeholder={`Question ${index + 1}`}
-                  className="flex-1"
+                  className="flex-1 min-h-[60px]"
                 />
                 {formData.questions.length > 1 && (
                   <Button type="button" variant="outline" size="sm" onClick={() => removeQuestion(index)}>
@@ -626,7 +635,9 @@ function PersonaForm({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit">{persona ? "Update" : "Create"} Persona</Button>
+          <Button type="submit" disabled={isUploading}>
+            {persona ? "Update" : "Create"} Persona
+          </Button>
         </div>
       </form>
     </>

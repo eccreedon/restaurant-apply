@@ -120,5 +120,34 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Migrate data from existing structure to new normalized structure
+DO $$
+DECLARE
+  persona_record RECORD;
+  question_text TEXT;
+  question_num INTEGER;
+BEGIN
+  -- Migrate persona questions to persona_questions table
+  FOR persona_record IN SELECT id, questions FROM personas WHERE questions IS NOT NULL LOOP
+    question_num := 1;
+    
+    -- Loop through each question in the array
+    FOR question_text IN SELECT unnest(persona_record.questions) LOOP
+      -- Insert into persona_questions table
+      INSERT INTO persona_questions (persona_id, question_text, question_number)
+      VALUES (persona_record.id, question_text, question_num)
+      ON CONFLICT (persona_id, question_number) DO NOTHING;
+      
+      question_num := question_num + 1;
+    END LOOP;
+  END LOOP;
+  
+  RAISE NOTICE 'Migration completed successfully';
+  
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Migration failed: %', SQLERRM;
+END $$;
+
 -- Run the migration (start with a small batch)
 SELECT migrate_questionnaire_data();

@@ -1,27 +1,32 @@
--- Create a function to pivot responses for export
-CREATE OR REPLACE FUNCTION get_responses_pivot(persona_id_param uuid)
+-- Create a function to export responses in a readable format
+CREATE OR REPLACE FUNCTION export_responses()
 RETURNS TABLE (
-  respondent_name text,
-  respondent_email text,
-  completed_at timestamp with time zone,
-  responses jsonb
+  response_id UUID,
+  respondent_name TEXT,
+  email TEXT,
+  phone TEXT,
+  persona TEXT,
+  submission_date TIMESTAMP WITH TIME ZONE,
+  question_number INTEGER,
+  question_text TEXT,
+  answer TEXT
 ) AS $$
 BEGIN
   RETURN QUERY
   SELECT 
-    rs.respondent_name,
-    rs.respondent_email,
-    rs.completed_at,
-    jsonb_object_agg(
-      CONCAT('Q', q.question_order, ': ', q.question_text),
-      r.response_text
-    ) as responses
-  FROM response_sessions rs
-  JOIN responses r ON rs.id = r.session_id  
-  JOIN questions q ON r.question_id = q.id
-  WHERE rs.persona_id = persona_id_param
-    AND rs.status = 'completed'
-  GROUP BY rs.id, rs.respondent_name, rs.respondent_email, rs.completed_at
-  ORDER BY rs.completed_at DESC;
+    r.id as response_id,
+    CONCAT(r.first_name, ' ', r.last_name) as respondent_name,
+    r.email,
+    r.phone,
+    r.persona,
+    r.created_at as submission_date,
+    (row_number() OVER (PARTITION BY r.id ORDER BY q.ordinality))::INTEGER as question_number,
+    q.value::TEXT as question_text,
+    a.value::TEXT as answer
+  FROM responses r
+  CROSS JOIN LATERAL jsonb_array_elements(r.questions) WITH ORDINALITY q
+  CROSS JOIN LATERAL jsonb_array_elements(r.answers) WITH ORDINALITY a
+  WHERE q.ordinality = a.ordinality
+  ORDER BY r.created_at DESC, question_number;
 END;
 $$ LANGUAGE plpgsql;

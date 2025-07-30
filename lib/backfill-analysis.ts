@@ -1,5 +1,5 @@
 import { supabase } from "./supabase"
-import { analyzeAnswers } from "./ai-analysis"
+import { analyzeAnswers, analyzeResponse } from "./ai-analysis"
 import { getAllPersonasFromDB } from "./persona-db"
 
 export interface BackfillProgress {
@@ -150,18 +150,26 @@ export async function backfillSpecificResponses(
         if (answer) answers.push(answer)
       }
 
-      const analysis = await analyzeAnswers(persona.questions, answers, persona.title)
+      const analysis = await analyzeResponse({
+        persona: response.persona,
+        questions: persona.questions,
+        answers,
+        respondentName: `${response.first_name} ${response.last_name}`,
+      })
 
       const { error: updateError } = await supabase.from("wide_responses").update({ analysis }).eq("id", response.id)
 
       if (updateError) {
+        console.error(`Error updating analysis for response ${response.id}:`, updateError)
         progress.failed++
       } else {
         progress.successful++
+        console.log(`Processed analysis for ${response.first_name} ${response.last_name} (${response.persona})`)
       }
 
       await new Promise((resolve) => setTimeout(resolve, 1000))
     } catch (error) {
+      console.error(`Error processing response ${response.id}:`, error)
       progress.failed++
     } finally {
       progress.processed++
@@ -170,4 +178,85 @@ export async function backfillSpecificResponses(
   }
 
   return progress
+}
+
+// Updated function to backfill analysis for all responses
+export async function backfillAnalysis(): Promise<{ success: boolean; processed: number; errors: number }> {
+  let processed = 0
+  let errors = 0
+
+  try {
+    // Get all responses without analysis
+    const { data: responses, error } = await supabase
+      .from("wide_responses")
+      .select("*")
+      .is("analysis", null)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching responses for backfill:", error)
+      return { success: false, processed: 0, errors: 1 }
+    }
+
+    if (!responses || responses.length === 0) {
+      console.log("No responses need analysis backfill")
+      return { success: true, processed: 0, errors: 0 }
+    }
+
+    console.log(`Starting backfill for ${responses.length} responses...`)
+
+    for (const response of responses) {
+      try {
+        // Extract questions and answers
+        const questions: string[] = []
+        const answers: string[] = []
+
+        for (let i = 1; i <= 20; i++) {
+          const question = response[`question_${i}`]
+          const answer = response[`answer_${i}`]
+
+          if (question && answer) {
+            questions.push(question)
+            answers.push(answer)
+          }
+        }
+
+        if (questions.length === 0 || answers.length === 0) {
+          console.log(`Skipping response ${response.id} - no questions/answers found`)
+          continue
+        }
+
+        // Generate AI analysis
+        const analysis = await analyzeResponse({
+          persona: response.persona,
+          questions,
+          answers,
+          respondentName: `${response.first_name} ${response.last_name}`,
+        })
+
+        // Update the response with analysis
+        const { error: updateError } = await supabase.from("wide_responses").update({ analysis }).eq("id", response.id)
+
+        if (updateError) {
+          console.error(`Error updating analysis for response ${response.id}:`, updateError)
+          errors++
+        } else {
+          processed++
+          console.log(`Processed analysis for ${response.first_name} ${response.last_name} (${response.persona})`)
+        }
+
+        // Add a small delay to avoid rate limiting
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      } catch (error) {
+        console.error(`Error processing response ${response.id}:`, error)
+        errors++
+      }
+    }
+
+    console.log(`Backfill completed: ${processed} processed, ${errors} errors`)
+    return { success: true, processed, errors }
+  } catch (error) {
+    console.error("Error in backfillAnalysis:", error)
+    return { success: false, processed, errors: errors + 1 }
+  }
 }

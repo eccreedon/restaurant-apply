@@ -1,35 +1,44 @@
--- Verify the corrected migration results
-SELECT 'Personas' as table_name, count(*) as record_count FROM personas
-UNION ALL
-SELECT 'Questions' as table_name, count(*) as record_count FROM questions  
-UNION ALL
-SELECT 'Response Sessions' as table_name, count(*) as record_count FROM response_sessions
-UNION ALL
-SELECT 'Individual Responses' as table_name, count(*) as record_count FROM individual_responses
-UNION ALL
-SELECT 'Old Responses' as table_name, count(*) as record_count FROM responses;
-
--- Show the questions that were extracted
-SELECT 
-    q.persona_id,
-    p.title as persona_title,
-    q.question_order,
-    left(q.question_text, 100) as question_preview
-FROM questions q
-JOIN personas p ON q.persona_id = p.id
-ORDER BY q.persona_id, q.question_order;
-
--- Show sample migrated responses
-SELECT 
-    rs.first_name,
-    rs.last_name,
-    p.title as persona_title,
-    q.question_order,
-    left(q.question_text, 60) as question_preview,
-    left(ir.response_text, 80) as response_preview
-FROM response_sessions rs
-JOIN personas p ON rs.persona_id = p.id
-JOIN individual_responses ir ON rs.id = ir.session_id
-JOIN questions q ON ir.question_id = q.id
-ORDER BY rs.started_at DESC, q.question_order
-LIMIT 10;
+-- Verify the corrected migration
+DO $$
+DECLARE
+  original_responses INTEGER;
+  migrated_sessions INTEGER;
+  total_individual_responses INTEGER;
+  sample_record RECORD;
+BEGIN
+  -- Get counts
+  SELECT COUNT(*) INTO original_responses FROM responses;
+  SELECT COUNT(*) INTO migrated_sessions FROM response_sessions;
+  SELECT COUNT(*) INTO total_individual_responses FROM individual_responses;
+  
+  RAISE NOTICE 'Migration Summary:';
+  RAISE NOTICE '================';
+  RAISE NOTICE 'Original responses: %', original_responses;
+  RAISE NOTICE 'Migrated sessions: %', migrated_sessions;
+  RAISE NOTICE 'Individual responses: %', total_individual_responses;
+  
+  -- Show sample data
+  RAISE NOTICE '';
+  RAISE NOTICE 'Sample migrated data:';
+  RAISE NOTICE '====================';
+  
+  FOR sample_record IN 
+    SELECT 
+      rs.first_name || ' ' || rs.last_name as name,
+      rs.persona_title,
+      COUNT(ir.id) as response_count,
+      string_agg(ir.question_text, ' | ' ORDER BY ir.question_number) as questions_preview
+    FROM response_sessions rs
+    LEFT JOIN individual_responses ir ON rs.id = ir.session_id
+    GROUP BY rs.id, rs.first_name, rs.last_name, rs.persona_title
+    LIMIT 3
+  LOOP
+    RAISE NOTICE 'Name: %, Persona: %, Responses: %', 
+      sample_record.name,
+      sample_record.persona_title,
+      sample_record.response_count;
+    RAISE NOTICE 'Questions preview: %', LEFT(sample_record.questions_preview, 100) || '...';
+    RAISE NOTICE '';
+  END LOOP;
+  
+END $$;

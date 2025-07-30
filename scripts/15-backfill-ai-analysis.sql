@@ -1,4 +1,14 @@
 -- Script to identify responses that need AI analysis
+
+-- Add analysis column to wide_responses table for AI analysis
+ALTER TABLE wide_responses ADD COLUMN IF NOT EXISTS analysis JSONB;
+
+-- Create index for analysis queries
+CREATE INDEX IF NOT EXISTS idx_wide_responses_analysis ON wide_responses USING GIN (analysis);
+
+-- Update existing responses to have null analysis (will be filled by backfill process)
+UPDATE wide_responses SET analysis = NULL WHERE analysis IS NULL;
+
 SELECT 
     id,
     first_name,

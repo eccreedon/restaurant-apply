@@ -91,7 +91,8 @@ export interface PersonaConfig {
   description: string
   icon: string
   color: string
-  questions: string[] // This will now be loaded from persona_questions table
+  image?: string
+  questions: string[]
   created_at?: string
   updated_at?: string
 }
@@ -165,7 +166,8 @@ export async function createPersonaInDB(
         description: persona.description,
         icon: persona.icon,
         color: persona.color,
-        questions: persona.questions, // Keep this for backward compatibility
+        image: persona.image,
+        questions: persona.questions,
       },
     ])
     .select()
@@ -201,7 +203,8 @@ export async function updatePersonaInDB(id: string, updates: Partial<PersonaConf
       description: updates.description,
       icon: updates.icon,
       color: updates.color,
-      questions: updates.questions, // Keep for backward compatibility
+      image: updates.image,
+      questions: updates.questions,
     })
     .eq("id", id)
     .select()

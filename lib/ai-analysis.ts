@@ -70,8 +70,21 @@ const GRADING_CRITERIA: Record<string, GradingCriteria> = {
   // Add more personas as needed
 }
 
+// Placeholder AI analysis function - disabled for now
+export async function analyzeResponse(data: {
+  persona: string
+  questions: string[]
+  answers: string[]
+  respondentName: string
+}): Promise<any> {
+  // Return null to indicate no analysis should be performed
+  return null
+}
+
+// Function to analyze answers based on persona criteria
 export async function analyzeAnswers(questions: string[], answers: string[], persona: string): Promise<any> {
-  console.log("AI analysis disabled - saving response without analysis for later backfill")
+  // Return null to indicate no analysis should be performed
+  // This maintains compatibility with existing code that expects this function
   return null
 }
 

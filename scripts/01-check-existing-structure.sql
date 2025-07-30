@@ -1,24 +1,29 @@
--- Check the data types of your existing tables
+-- Check what tables and columns currently exist
 SELECT 
-    table_name,
-    column_name,
-    data_type,
-    character_maximum_length
-FROM information_schema.columns 
-WHERE table_schema = 'public' 
-    AND table_name IN ('persona', 'personas', 'responses')
-ORDER BY table_name, ordinal_position;
+  t.table_name,
+  c.column_name,
+  c.data_type,
+  c.is_nullable,
+  c.column_default
+FROM information_schema.tables t
+LEFT JOIN information_schema.columns c ON t.table_name = c.table_name
+WHERE t.table_schema = 'public' 
+  AND t.table_type = 'BASE TABLE'
+  AND t.table_name IN ('personas', 'responses', 'persona_questions')
+ORDER BY t.table_name, c.ordinal_position;
 
--- Show sample data to understand the format
+-- Check for any existing data
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'personas') THEN
-        RAISE NOTICE 'Sample from personas table:';
-        PERFORM id, name FROM personas LIMIT 3;
-    END IF;
-    
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'responses') THEN
-        RAISE NOTICE 'Sample from responses table:';
-        PERFORM persona_id, respondent_email FROM responses LIMIT 3;
-    END IF;
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'personas') THEN
+    RAISE NOTICE 'Personas table exists with % rows', (SELECT COUNT(*) FROM personas);
+  ELSE
+    RAISE NOTICE 'Personas table does not exist';
+  END IF;
+  
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'responses') THEN
+    RAISE NOTICE 'Responses table exists with % rows', (SELECT COUNT(*) FROM responses);
+  ELSE
+    RAISE NOTICE 'Responses table does not exist';
+  END IF;
 END $$;

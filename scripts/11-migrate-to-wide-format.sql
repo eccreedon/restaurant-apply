@@ -1,104 +1,82 @@
--- Migrate to wide format (one row per respondent)
-CREATE OR REPLACE FUNCTION migrate_to_wide_format()
-RETURNS void AS $$
+-- Migrate existing data to wide format
+DO $$
 DECLARE
-    response_record RECORD;
-    actual_persona_id text;
-    i integer;
+  response_record RECORD;
+  questions_array JSONB;
+  answers_array JSONB;
+  questions_length INTEGER;
+  answers_length INTEGER;
+  insert_columns TEXT[];
+  insert_values TEXT[];
+  i INTEGER;
+  question_text TEXT;
+  answer_text TEXT;
+  final_query TEXT;
 BEGIN
-    RAISE NOTICE 'Starting migration to wide format...';
+  RAISE NOTICE 'Starting migration to wide format...';
+  
+  -- First, migrate personas (copy from existing personas table)
+  INSERT INTO wide_personas (id, title, description, icon, color, created_at, updated_at)
+  SELECT id, title, description, icon, color, created_at, updated_at
+  FROM personas
+  ON CONFLICT (id) DO UPDATE SET
+    title = EXCLUDED.title,
+    description = EXCLUDED.description,
+    icon = EXCLUDED.icon,
+    color = EXCLUDED.color,
+    updated_at = EXCLUDED.updated_at;
+  
+  -- Migrate persona questions
+  INSERT INTO wide_persona_questions (persona_id, question_text, question_number, created_at)
+  SELECT persona_id, question_text, question_number, created_at
+  FROM persona_questions
+  ON CONFLICT (persona_id, question_number) DO UPDATE SET
+    question_text = EXCLUDED.question_text;
+  
+  -- Clear existing wide responses
+  DELETE FROM wide_responses;
+  
+  -- Migrate responses to wide format
+  FOR response_record IN SELECT * FROM responses LOOP
+    -- Initialize arrays for building dynamic query
+    insert_columns := ARRAY['first_name', 'last_name', 'email', 'phone', 'persona', 'created_at'];
+    insert_values := ARRAY[
+      quote_literal(response_record.first_name),
+      quote_literal(response_record.last_name), 
+      quote_literal(response_record.email),
+      COALESCE(quote_literal(response_record.phone), 'NULL'),
+      quote_literal(response_record.persona),
+      quote_literal(response_record.created_at::TEXT)
+    ];
     
-    -- First, create standardized questions for each persona
-    FOR response_record IN 
-        SELECT DISTINCT r.persona, r.questions 
-        FROM responses r
-        WHERE r.questions IS NOT NULL 
-    LOOP
-        -- Map persona title to actual persona ID
-        SELECT p.id INTO actual_persona_id
-        FROM personas p 
-        WHERE p.title = response_record.persona OR p.id = response_record.persona;
-        
-        IF actual_persona_id IS NULL THEN
-            RAISE NOTICE 'Could not find persona ID for: %', response_record.persona;
-            CONTINUE;
-        END IF;
-        
-        RAISE NOTICE 'Creating questions for persona: % (ID: %)', response_record.persona, actual_persona_id;
-        
-        -- Insert each question with a number (Q1, Q2, etc.)
-        FOR i IN 1..array_length(response_record.questions, 1) LOOP
-            INSERT INTO persona_questions (persona_id, question_text, question_number)
-            VALUES (actual_persona_id, response_record.questions[i], i)
-            ON CONFLICT (persona_id, question_number) DO NOTHING;
-            
-            RAISE NOTICE 'Q%: %', i, left(response_record.questions[i], 80);
-        END LOOP;
+    -- Get arrays and their lengths
+    questions_array := response_record.questions;
+    answers_array := response_record.answers;
+    questions_length := jsonb_array_length(questions_array);
+    answers_length := jsonb_array_length(answers_array);
+    
+    -- Add question-answer pairs (up to 20)
+    FOR i IN 0..LEAST(questions_length-1, answers_length-1, 19) LOOP
+      question_text := questions_array->>i;
+      answer_text := answers_array->>i;
+      
+      IF question_text IS NOT NULL AND answer_text IS NOT NULL THEN
+        insert_columns := insert_columns || ARRAY['question_' || (i+1), 'answer_' || (i+1)];
+        insert_values := insert_values || ARRAY[quote_literal(question_text), quote_literal(answer_text)];
+      END IF;
     END LOOP;
     
-    RAISE NOTICE 'Questions created. Now migrating responses to wide format...';
+    -- Build and execute dynamic insert
+    final_query := 'INSERT INTO wide_responses (' || array_to_string(insert_columns, ', ') || 
+                   ') VALUES (' || array_to_string(insert_values, ', ') || ')';
     
-    -- Now migrate each respondent as one row
-    FOR response_record IN SELECT * FROM responses LOOP
-        -- Map persona title to actual persona ID
-        SELECT p.id INTO actual_persona_id
-        FROM personas p 
-        WHERE p.title = response_record.persona OR p.id = response_record.persona;
-        
-        IF actual_persona_id IS NULL THEN
-            RAISE NOTICE 'Skipping response - could not find persona ID for: %', response_record.persona;
-            CONTINUE;
-        END IF;
-        
-        -- Insert one row per respondent with all their answers as columns
-        INSERT INTO wide_responses (
-            persona_id,
-            first_name,
-            last_name,
-            email,
-            phone,
-            q1_response,
-            q2_response,
-            q3_response,
-            q4_response,
-            q5_response,
-            q6_response,
-            q7_response,
-            q8_response,
-            q9_response,
-            q10_response,
-            analysis,
-            created_at
-        )
-        VALUES (
-            actual_persona_id,
-            response_record.first_name,
-            response_record.last_name,
-            response_record.email,
-            response_record.phone,
-            CASE WHEN array_length(response_record.answers, 1) >= 1 THEN response_record.answers[1] END,
-            CASE WHEN array_length(response_record.answers, 1) >= 2 THEN response_record.answers[2] END,
-            CASE WHEN array_length(response_record.answers, 1) >= 3 THEN response_record.answers[3] END,
-            CASE WHEN array_length(response_record.answers, 1) >= 4 THEN response_record.answers[4] END,
-            CASE WHEN array_length(response_record.answers, 1) >= 5 THEN response_record.answers[5] END,
-            CASE WHEN array_length(response_record.answers, 1) >= 6 THEN response_record.answers[6] END,
-            CASE WHEN array_length(response_record.answers, 1) >= 7 THEN response_record.answers[7] END,
-            CASE WHEN array_length(response_record.answers, 1) >= 8 THEN response_record.answers[8] END,
-            CASE WHEN array_length(response_record.answers, 1) >= 9 THEN response_record.answers[9] END,
-            CASE WHEN array_length(response_record.answers, 1) >= 10 THEN response_record.answers[10] END,
-            response_record.analysis,
-            response_record.created_at
-        );
-        
-        RAISE NOTICE 'Migrated: % % (% answers)', 
-                     response_record.first_name, 
-                     response_record.last_name,
-                     array_length(response_record.answers, 1);
-    END LOOP;
-    
-    RAISE NOTICE 'Wide format migration completed successfully!';
-END;
-$$ LANGUAGE plpgsql;
-
--- Run the migration
-SELECT migrate_to_wide_format();
+    EXECUTE final_query;
+  END LOOP;
+  
+  RAISE NOTICE 'Wide format migration completed successfully';
+  
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Wide format migration failed: %', SQLERRM;
+    RAISE;
+END $$;

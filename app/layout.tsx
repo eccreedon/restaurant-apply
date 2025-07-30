@@ -6,8 +6,8 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Restaurant Worker Survey",
-  description: "Complete our assessment to explore restaurant career opportunities",
+  title: "Persona-based Questionnaire",
+  description: "A questionnaire system with persona-based assessments",
     generator: 'v0.dev'
 }
 

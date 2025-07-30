@@ -1,145 +1,115 @@
-import { createClient } from "@supabase/supabase-js"
+import { supabase } from "./supabase"
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
-
-export interface Persona {
-  id: string
-  title: string
-  description: string
-  icon: string
-  color: string
-  questions: any[] // JSONB array
-  created_at: string
-  updated_at?: string
-}
-
-export interface Question {
-  id: string
-  persona_id: string
-  question_text: string
-  question_order: number
-  question_type: string
-  created_at: string
-}
-
-export interface ResponseSession {
-  id: string
-  persona_id: string
-  first_name: string
-  last_name: string
+export interface NormalizedResponse {
+  sessionId: string
+  firstName: string
+  lastName: string
   email: string
   phone?: string
-  started_at: string
-  completed_at?: string
-  status: "in_progress" | "completed" | "abandoned"
-  analysis?: any
+  personaTitle: string
+  createdAt: string
+  responses: {
+    questionId: string
+    questionText: string
+    questionNumber: number
+    answer: string
+  }[]
 }
 
-export interface IndividualResponse {
-  id: string
-  session_id: string
-  question_id: string
-  response_text: string
-  created_at: string
-}
-
-// Get all personas
-export async function getPersonas() {
-  const { data, error } = await supabase.from("personas").select("*").order("created_at", { ascending: true })
-
-  if (error) throw error
-  return data as Persona[]
-}
-
-// Get questions for a specific persona (from new normalized table)
-export async function getQuestionsByPersona(personaId: string) {
-  const { data, error } = await supabase
-    .from("questions")
-    .select("*")
-    .eq("persona_id", personaId)
-    .order("question_order", { ascending: true })
-
-  if (error) throw error
-  return data as Question[]
-}
-
-// Create a new response session
-export async function createResponseSession(
-  personaId: string,
-  respondentData: {
-    first_name: string
-    last_name: string
-    email: string
-    phone?: string
-  },
-) {
-  const { data, error } = await supabase
-    .from("response_sessions")
-    .insert({
-      persona_id: personaId,
-      first_name: respondentData.first_name,
-      last_name: respondentData.last_name,
-      email: respondentData.email,
-      phone: respondentData.phone,
-      status: "in_progress",
-    })
-    .select()
-    .single()
-
-  if (error) throw error
-  return data as ResponseSession
-}
-
-// Save a single response
-export async function saveIndividualResponse(sessionId: string, questionId: string, responseText: string) {
-  const { data, error } = await supabase
-    .from("individual_responses")
-    .upsert({
-      session_id: sessionId,
-      question_id: questionId,
-      response_text: responseText,
-    })
-    .select()
-    .single()
-
-  if (error) throw error
-  return data as IndividualResponse
-}
-
-// Complete a response session
-export async function completeResponseSession(sessionId: string, analysis?: any) {
-  const { data, error } = await supabase
-    .from("response_sessions")
-    .update({
-      completed_at: new Date().toISOString(),
-      status: "completed",
-      analysis: analysis,
-    })
-    .eq("id", sessionId)
-    .select()
-    .single()
-
-  if (error) throw error
-  return data as ResponseSession
-}
-
-// Get all responses for a persona (for analysis)
-export async function getResponsesByPersona(personaId: string) {
-  const { data, error } = await supabase
-    .from("response_sessions")
-    .select(`
-      *,
-      individual_responses (
-        *,
-        questions (
+export async function getAllNormalizedResponses(): Promise<NormalizedResponse[]> {
+  try {
+    // Get all response sessions with their individual responses
+    const { data: sessions, error: sessionsError } = await supabase
+      .from("response_sessions")
+      .select(`
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        persona_title,
+        created_at,
+        individual_responses (
+          question_id,
           question_text,
-          question_order
+          question_number,
+          answer
         )
-      )
-    `)
-    .eq("persona_id", personaId)
-    .eq("status", "completed")
+      `)
+      .order("created_at", { ascending: false })
 
-  if (error) throw error
-  return data
+    if (sessionsError) {
+      console.error("Error fetching normalized responses:", sessionsError)
+      return []
+    }
+
+    return (
+      sessions?.map((session) => ({
+        sessionId: session.id,
+        firstName: session.first_name,
+        lastName: session.last_name,
+        email: session.email,
+        phone: session.phone,
+        personaTitle: session.persona_title,
+        createdAt: session.created_at,
+        responses: session.individual_responses.sort((a, b) => a.question_number - b.question_number),
+      })) || []
+    )
+  } catch (error) {
+    console.error("Error in getAllNormalizedResponses:", error)
+    return []
+  }
+}
+
+export async function saveNormalizedResponse(data: {
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  personaId: string
+  personaTitle: string
+  responses: { questionId: string; questionText: string; questionNumber: number; answer: string }[]
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Create response session
+    const { data: session, error: sessionError } = await supabase
+      .from("response_sessions")
+      .insert({
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        persona_id: data.personaId,
+        persona_title: data.personaTitle,
+        completed_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (sessionError) {
+      console.error("Error creating response session:", sessionError)
+      return { success: false, error: sessionError.message }
+    }
+
+    // Create individual responses
+    const individualResponses = data.responses.map((response) => ({
+      session_id: session.id,
+      question_id: response.questionId,
+      question_text: response.questionText,
+      question_number: response.questionNumber,
+      answer: response.answer,
+    }))
+
+    const { error: responsesError } = await supabase.from("individual_responses").insert(individualResponses)
+
+    if (responsesError) {
+      console.error("Error creating individual responses:", responsesError)
+      return { success: false, error: responsesError.message }
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error("Error in saveNormalizedResponse:", error)
+    return { success: false, error: "An unexpected error occurred" }
+  }
 }

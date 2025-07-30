@@ -274,62 +274,54 @@ function PersonaSelectorStep({
 }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Choose Your Role</h1>
           <p className="text-gray-600">Select the position that best matches your experience or interest</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
           {personas.map((persona) => (
             <div
               key={persona.id}
               onClick={() => onPersonaSelect(persona)}
-              className="bg-white rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-blue-500 overflow-hidden group"
+              className="bg-white rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-blue-500 overflow-hidden group"
             >
-              {/* Beautiful Gradient Header */}
-              <div
-                className="relative h-48 overflow-hidden flex items-center justify-center text-white"
-                style={{
-                  background: `linear-gradient(135deg, ${persona.color}, ${persona.color}dd)`,
-                }}
-              >
-                <div className="text-center">
-                  <div className="text-5xl font-bold mb-3 opacity-90">{persona.title.charAt(0)}</div>
-                  <div className="text-lg font-medium opacity-80">{persona.title}</div>
-                </div>
-
-                {/* Decorative elements */}
-                <div className="absolute top-4 right-4 w-8 h-8 bg-white/20 rounded-full"></div>
-                <div className="absolute bottom-4 left-4 w-6 h-6 bg-white/15 rounded-full"></div>
-                <div className="absolute top-1/2 left-6 w-4 h-4 bg-white/10 rounded-full"></div>
-
-                {/* Subtle pattern overlay */}
-                <div className="absolute inset-0 opacity-10">
+              {/* Image Section */}
+              <div className="relative h-32 overflow-hidden">
+                {persona.image ? (
+                  <img
+                    src={persona.image || "/placeholder.svg"}
+                    alt={`${persona.title} role`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
                   <div
-                    className="w-full h-full"
-                    style={{
-                      backgroundImage: `radial-gradient(circle at 20% 50%, white 2px, transparent 2px),
-                                     radial-gradient(circle at 80% 50%, white 2px, transparent 2px)`,
-                      backgroundSize: "40px 40px",
-                    }}
-                  ></div>
-                </div>
+                    className="w-full h-full flex items-center justify-center text-white"
+                    style={{ backgroundColor: persona.color }}
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl font-bold mb-1">{persona.title.charAt(0)}</div>
+                      <div className="text-xs opacity-80">{persona.title}</div>
+                    </div>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
               </div>
 
               {/* Content Section */}
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{persona.title}</h3>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{persona.description}</p>
+              <div className="p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">{persona.title}</h3>
+                <p className="text-gray-600 text-xs mb-3 line-clamp-2">{persona.description}</p>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                     {persona.questions.length} questions
                   </span>
-                  <div className="flex items-center text-blue-600 text-sm font-medium group-hover:text-blue-700">
-                    Start Assessment
+                  <div className="flex items-center text-blue-600 text-xs font-medium group-hover:text-blue-700">
+                    Start
                     <svg
-                      className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"
+                      className="w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
