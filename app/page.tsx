@@ -272,22 +272,6 @@ function PersonaSelectorStep({
   onPersonaSelect: (persona: PersonaConfig) => void
   onBack: () => void
 }) {
-  // Function to get stock image URL based on persona title
-  const getPersonaImage = (title: string) => {
-    const imageMap: Record<string, string> = {
-      "Line Cook": "/placeholder.svg?height=200&width=300",
-      Server: "/placeholder.svg?height=200&width=300",
-      Bartender: "/placeholder.svg?height=200&width=300",
-      Host: "/placeholder.svg?height=200&width=300",
-      Manager: "/placeholder.svg?height=200&width=300",
-      Dishwasher: "/placeholder.svg?height=200&width=300",
-      "Prep Cook": "/placeholder.svg?height=200&width=300",
-      Cashier: "/placeholder.svg?height=200&width=300",
-    }
-
-    return imageMap[title] || "/placeholder.svg?height=200&width=300"
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="max-w-6xl mx-auto">
@@ -303,33 +287,43 @@ function PersonaSelectorStep({
               onClick={() => onPersonaSelect(persona)}
               className="bg-white rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-blue-500 overflow-hidden group"
             >
-              {/* Image Section */}
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src={getPersonaImage(persona.title) || "/placeholder.svg"}
-                  alt={`${persona.title} role`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+              {/* Beautiful Gradient Header */}
+              <div
+                className="relative h-48 overflow-hidden flex items-center justify-center text-white"
+                style={{
+                  background: `linear-gradient(135deg, ${persona.color}, ${persona.color}dd)`,
+                }}
+              >
+                <div className="text-center">
+                  <div className="text-5xl font-bold mb-3 opacity-90">{persona.title.charAt(0)}</div>
+                  <div className="text-lg font-medium opacity-80">{persona.title}</div>
+                </div>
 
-                {/* Emoji overlay */}
-                <div className="absolute top-4 right-4">
+                {/* Decorative elements */}
+                <div className="absolute top-4 right-4 w-8 h-8 bg-white/20 rounded-full"></div>
+                <div className="absolute bottom-4 left-4 w-6 h-6 bg-white/15 rounded-full"></div>
+                <div className="absolute top-1/2 left-6 w-4 h-4 bg-white/10 rounded-full"></div>
+
+                {/* Subtle pattern overlay */}
+                <div className="absolute inset-0 opacity-10">
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
-                    style={{ backgroundColor: persona.color }}
-                  >
-                    <span className="text-2xl">{persona.icon}</span>
-                  </div>
+                    className="w-full h-full"
+                    style={{
+                      backgroundImage: `radial-gradient(circle at 20% 50%, white 2px, transparent 2px),
+                                     radial-gradient(circle at 80% 50%, white 2px, transparent 2px)`,
+                      backgroundSize: "40px 40px",
+                    }}
+                  ></div>
                 </div>
               </div>
 
               {/* Content Section */}
               <div className="p-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{persona.title}</h3>
-                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{persona.description}</p>
+                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{persona.description}</p>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                  <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
                     {persona.questions.length} questions
                   </span>
                   <div className="flex items-center text-blue-600 text-sm font-medium group-hover:text-blue-700">
