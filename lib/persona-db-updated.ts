@@ -91,7 +91,7 @@ export interface PersonaConfig {
   description: string
   icon: string
   color: string
-  questions: string[]
+  questions: string[] // This will now be loaded from persona_questions table
   created_at?: string
   updated_at?: string
 }

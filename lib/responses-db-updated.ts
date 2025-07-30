@@ -8,8 +8,29 @@ export interface ResponseData {
   email: string
   phone?: string
   persona: string
-  questions: string[]
-  answers: string[]
+  questions: string[] // Keep for compatibility with existing code
+  answers: string[] // Keep for compatibility with existing code
+  analysis?: any
+  created_at?: string
+}
+
+export interface WideResponseData {
+  id?: string
+  persona_id: string
+  first_name: string
+  last_name: string
+  email: string
+  phone?: string
+  q1_response?: string
+  q2_response?: string
+  q3_response?: string
+  q4_response?: string
+  q5_response?: string
+  q6_response?: string
+  q7_response?: string
+  q8_response?: string
+  q9_response?: string
+  q10_response?: string
   analysis?: any
   created_at?: string
 }
@@ -44,20 +65,14 @@ export async function saveResponse(responseData: Omit<ResponseData, "id" | "crea
 
     console.log("Validation passed, performing AI analysis...")
 
-    // Get AI analysis (now with better error handling)
+    // Get AI analysis
     let analysis = null
     try {
       analysis = await analyzeAnswers(responseData.questions, responseData.answers, responseData.persona)
-      console.log("AI analysis completed successfully")
+      console.log("AI analysis completed:", analysis)
     } catch (error) {
-      console.error("AI analysis failed, continuing without analysis:", error)
-      // Continue without analysis - this is not a critical failure
-      analysis = {
-        summary: `Assessment completed for ${responseData.persona} position.`,
-        strengths: "Responses recorded successfully.",
-        recommendations: "Manual review recommended.",
-        score: "Pending review",
-      }
+      console.error("AI analysis failed:", error)
+      // Continue without analysis
     }
 
     // Map persona title to persona ID
@@ -72,7 +87,7 @@ export async function saveResponse(responseData: Omit<ResponseData, "id" | "crea
     }
 
     // Prepare data for wide format database
-    const wideResponseData: any = {
+    const wideResponseData: Omit<WideResponseData, "id" | "created_at"> = {
       persona_id: personaData.id,
       first_name: responseData.first_name.trim(),
       last_name: responseData.last_name.trim(),
@@ -83,10 +98,11 @@ export async function saveResponse(responseData: Omit<ResponseData, "id" | "crea
 
     // Add answers to Q1-Q10 columns
     for (let i = 0; i < Math.min(responseData.answers.length, 10); i++) {
-      wideResponseData[`q${i + 1}_response`] = responseData.answers[i]
+      const columnName = `q${i + 1}_response` as keyof WideResponseData
+      ;(wideResponseData as any)[columnName] = responseData.answers[i]
     }
 
-    console.log("Saving to wide_responses table...")
+    console.log("Saving to wide_responses table with data:", wideResponseData)
 
     // Save to wide_responses table
     const { data, error } = await supabase.from("wide_responses").insert([wideResponseData]).select().single()
@@ -100,7 +116,7 @@ export async function saveResponse(responseData: Omit<ResponseData, "id" | "crea
       throw new Error("No data returned from database insert")
     }
 
-    console.log("Response saved successfully:", data.id)
+    console.log("Response saved successfully:", data)
 
     // Convert back to original format for compatibility
     const compatibleData: ResponseData = {
@@ -226,7 +242,7 @@ export async function getResponseById(id: string): Promise<ResponseData | null> 
       created_at: data.created_at,
     }
 
-    console.log("Response fetched successfully:", compatibleResponse.id)
+    console.log("Response fetched successfully:", compatibleResponse)
     return compatibleResponse
   } catch (error) {
     console.error("Error in getResponseById:", error)
