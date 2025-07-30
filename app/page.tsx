@@ -272,9 +272,25 @@ function PersonaSelectorStep({
   onPersonaSelect: (persona: PersonaConfig) => void
   onBack: () => void
 }) {
+  // Function to get stock image URL based on persona title
+  const getPersonaImage = (title: string) => {
+    const imageMap: Record<string, string> = {
+      "Line Cook": "/placeholder.svg?height=200&width=300",
+      Server: "/placeholder.svg?height=200&width=300",
+      Bartender: "/placeholder.svg?height=200&width=300",
+      Host: "/placeholder.svg?height=200&width=300",
+      Manager: "/placeholder.svg?height=200&width=300",
+      Dishwasher: "/placeholder.svg?height=200&width=300",
+      "Prep Cook": "/placeholder.svg?height=200&width=300",
+      Cashier: "/placeholder.svg?height=200&width=300",
+    }
+
+    return imageMap[title] || "/placeholder.svg?height=200&width=300"
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Choose Your Role</h1>
           <p className="text-gray-600">Select the position that best matches your experience or interest</p>
@@ -285,18 +301,49 @@ function PersonaSelectorStep({
             <div
               key={persona.id}
               onClick={() => onPersonaSelect(persona)}
-              className="bg-white rounded-lg shadow-lg p-6 cursor-pointer hover:shadow-xl transition-shadow border-2 border-transparent hover:border-blue-500"
+              className="bg-white rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-blue-500 overflow-hidden group"
             >
-              <div className="text-center">
-                <div
-                  className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center`}
-                  style={{ backgroundColor: persona.color }}
-                >
-                  <span className="text-2xl text-white">{persona.icon}</span>
+              {/* Image Section */}
+              <div className="relative h-48 overflow-hidden">
+                <img
+                  src={getPersonaImage(persona.title) || "/placeholder.svg"}
+                  alt={`${persona.title} role`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+
+                {/* Emoji overlay */}
+                <div className="absolute top-4 right-4">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
+                    style={{ backgroundColor: persona.color }}
+                  >
+                    <span className="text-2xl">{persona.icon}</span>
+                  </div>
                 </div>
+              </div>
+
+              {/* Content Section */}
+              <div className="p-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{persona.title}</h3>
-                <p className="text-gray-600 text-sm">{persona.description}</p>
-                <p className="text-xs text-gray-500 mt-2">{persona.questions.length} questions</p>
+                <p className="text-gray-600 text-sm mb-3 line-clamp-2">{persona.description}</p>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                    {persona.questions.length} questions
+                  </span>
+                  <div className="flex items-center text-blue-600 text-sm font-medium group-hover:text-blue-700">
+                    Start Assessment
+                    <svg
+                      className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
               </div>
             </div>
           ))}
