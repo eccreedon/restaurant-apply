@@ -148,9 +148,37 @@ function RespondentInfoStep({ onComplete }: { onComplete: (info: RespondentData)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (formData.firstName && formData.lastName && formData.email) {
-      onComplete(formData)
+
+    // Validate required fields
+    if (!formData.firstName.trim()) {
+      alert("First name is required")
+      return
     }
+
+    if (!formData.lastName.trim()) {
+      alert("Last name is required")
+      return
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!formData.email.trim() || !emailRegex.test(formData.email)) {
+      alert("Please enter a valid email address")
+      return
+    }
+
+    // Validate phone number (must be exactly 10 digits)
+    const phoneDigits = formData.phone.replace(/\D/g, "")
+    if (phoneDigits.length !== 10) {
+      alert("Phone number must be exactly 10 digits")
+      return
+    }
+
+    // If all validation passes, proceed
+    onComplete({
+      ...formData,
+      phone: phoneDigits, // Store just the digits
+    })
   }
 
   return (
@@ -199,13 +227,26 @@ function RespondentInfoStep({ onComplete }: { onComplete: (info: RespondentData)
           </div>
           <div>
             <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-              Phone
+              Phone *
             </label>
             <input
               type="tel"
               id="phone"
+              required
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, "") // Remove non-digits
+                if (value.length <= 10) {
+                  let formatted = value
+                  if (value.length >= 6) {
+                    formatted = `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6)}`
+                  } else if (value.length >= 3) {
+                    formatted = `(${value.slice(0, 3)}) ${value.slice(3)}`
+                  }
+                  setFormData({ ...formData, phone: formatted })
+                }
+              }}
+              placeholder="(555) 123-4567"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
