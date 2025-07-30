@@ -292,7 +292,7 @@ function PersonaSelectorStep({
                   className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center`}
                   style={{ backgroundColor: persona.color }}
                 >
-                  <span className="text-2xl text-white">👨‍🍳</span>
+                  <span className="text-2xl text-white">{persona.icon}</span>
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{persona.title}</h3>
                 <p className="text-gray-600 text-sm">{persona.description}</p>

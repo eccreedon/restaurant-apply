@@ -19,7 +19,37 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Trash2, Edit, Plus, Users, FileText, BarChart3, Eye, Mail, Calendar } from "lucide-react"
+
+// Common emojis for restaurant/service industry
+const EMOJI_OPTIONS = [
+  { value: "👨‍🍳", label: "👨‍🍳 Male Chef" },
+  { value: "👩‍🍳", label: "👩‍🍳 Female Chef" },
+  { value: "🧑‍🍳", label: "🧑‍🍳 Chef" },
+  { value: "🍽️", label: "🍽️ Plate" },
+  { value: "🥘", label: "🥘 Food" },
+  { value: "🍕", label: "🍕 Pizza" },
+  { value: "🍔", label: "🍔 Burger" },
+  { value: "🥗", label: "🥗 Salad" },
+  { value: "🍰", label: "🍰 Cake" },
+  { value: "☕", label: "☕ Coffee" },
+  { value: "🍷", label: "🍷 Wine" },
+  { value: "🍺", label: "🍺 Beer" },
+  { value: "🥤", label: "🥤 Drink" },
+  { value: "🍴", label: "🍴 Utensils" },
+  { value: "🔪", label: "🔪 Knife" },
+  { value: "🥄", label: "🥄 Spoon" },
+  { value: "👥", label: "👥 People" },
+  { value: "💼", label: "💼 Business" },
+  { value: "🏪", label: "🏪 Store" },
+  { value: "🏢", label: "🏢 Building" },
+  { value: "⭐", label: "⭐ Star" },
+  { value: "🎯", label: "🎯 Target" },
+  { value: "💪", label: "💪 Strong" },
+  { value: "🚀", label: "🚀 Rocket" },
+  { value: "🔥", label: "🔥 Fire" },
+]
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("responses")
@@ -433,6 +463,10 @@ function PersonasTab({
                   <Badge variant="secondary">{persona.questions.length}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Emoji:</span>
+                  <span className="text-lg">{persona.icon}</span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Color:</span>
                   <div className="w-6 h-6 rounded-full border" style={{ backgroundColor: persona.color }} />
                 </div>
@@ -458,7 +492,7 @@ function PersonaForm({
   const [formData, setFormData] = useState({
     title: persona?.title || "",
     description: persona?.description || "",
-    icon: persona?.icon || "Users",
+    emoji: persona?.icon || "👨‍🍳",
     color: persona?.color || "#3B82F6",
     questions: persona?.questions || [""],
   })
@@ -469,6 +503,7 @@ function PersonaForm({
     try {
       const personaData = {
         ...formData,
+        icon: formData.emoji, // Map emoji back to icon for database compatibility
         questions: formData.questions.filter((q) => q.trim()),
       }
 
@@ -524,14 +559,30 @@ function PersonaForm({
             />
           </div>
           <div>
-            <Label htmlFor="color">Color</Label>
-            <Input
-              id="color"
-              type="color"
-              value={formData.color}
-              onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-            />
+            <Label htmlFor="emoji">Emoji</Label>
+            <Select value={formData.emoji} onValueChange={(value) => setFormData({ ...formData, emoji: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select an emoji" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {EMOJI_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+        </div>
+
+        <div>
+          <Label htmlFor="color">Color</Label>
+          <Input
+            id="color"
+            type="color"
+            value={formData.color}
+            onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+          />
         </div>
 
         <div>
