@@ -38,7 +38,7 @@ export async function saveResponse(data: {
       return { success: false, error: `Could not find persona: ${data.persona}` }
     }
 
-    // Build insert data for wide_responses table
+    // Build insert data using EXACT column names from your table
     const insertData: any = {
       first_name: data.first_name,
       last_name: data.last_name,
@@ -47,9 +47,9 @@ export async function saveResponse(data: {
       persona_id: personaData.id,
     }
 
-    // Add questions and answers to the wide format
-    for (let i = 0; i < Math.min(data.questions.length, data.answers.length, 20); i++) {
-      insertData[`question_${i + 1}`] = data.questions[i]
+    // Add ONLY the answers using the correct column names (q1_response, q2_response, etc.)
+    // Your table doesn't have question columns, only response columns
+    for (let i = 0; i < Math.min(data.answers.length, 10); i++) {
       insertData[`q${i + 1}_response`] = data.answers[i]
     }
 
@@ -90,16 +90,12 @@ export async function getAllResponses(): Promise<ResponseData[]> {
 
     return (
       data?.map((row) => {
-        const questions: string[] = []
         const answers: string[] = []
 
-        // Extract questions and answers from wide format
-        for (let i = 1; i <= 20; i++) {
-          const question = row[`question_${i}`]
+        // Extract answers from q1_response, q2_response, etc.
+        for (let i = 1; i <= 10; i++) {
           const answer = row[`q${i}_response`]
-
-          if (question && answer) {
-            questions.push(question)
+          if (answer) {
             answers.push(answer)
           }
         }
@@ -110,8 +106,8 @@ export async function getAllResponses(): Promise<ResponseData[]> {
           last_name: row.last_name,
           email: row.email,
           phone: row.phone,
-          persona: row.personas?.title || row.persona || "Unknown", // Updated line
-          questions,
+          persona: row.personas?.title || "Unknown",
+          questions: [], // Your table doesn't store questions, only answers
           answers,
           analysis: row.analysis,
           created_at: row.created_at,
