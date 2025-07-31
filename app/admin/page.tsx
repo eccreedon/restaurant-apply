@@ -456,6 +456,23 @@ function PersonasTab({
   )
 }
 
+const convertFileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result)
+      } else {
+        reject("Failed to convert file to base64: Result is not a string.")
+      }
+    }
+    reader.onerror = () => {
+      reject("Failed to convert file to base64: FileReader error.")
+    }
+    reader.readAsDataURL(file)
+  })
+}
+
 // Persona Form Component
 function PersonaForm({
   persona,
@@ -480,25 +497,56 @@ function PersonaForm({
     e.preventDefault()
 
     try {
+      console.log("Form data being submitted:", formData)
+
+      // Validate required fields
+      if (!formData.title.trim()) {
+        alert("Title is required")
+        return
+      }
+      if (!formData.description.trim()) {
+        alert("Description is required")
+        return
+      }
+      if (formData.questions.filter((q) => q.trim()).length === 0) {
+        alert("At least one question is required")
+        return
+      }
+
       const personaData = {
-        title: formData.title,
-        description: formData.description,
-        icon: formData.emoji,
-        color: formData.color,
-        image: formData.image,
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        icon: formData.emoji || "👤",
+        color: formData.color || "#6B7280",
+        image: formData.image || null,
         questions: formData.questions.filter((q) => q.trim()),
       }
 
+      console.log("Processed persona data:", personaData)
+
+      let result
       if (persona) {
-        await updatePersonaInDB(persona.id, personaData)
+        console.log("Updating existing persona:", persona.id)
+        result = await updatePersonaInDB(persona.id, personaData)
       } else {
-        await createPersonaInDB(personaData)
+        console.log("Creating new persona")
+        result = await createPersonaInDB(personaData)
       }
 
-      onSave(personaData as PersonaConfig)
+      console.log("Save operation successful:", result)
+      onSave(result)
     } catch (error) {
-      console.error("Error saving persona:", error)
-      alert("Error saving persona. Please try again.")
+      console.error("Detailed error saving persona:", error)
+
+      // Show more specific error message
+      let errorMessage = "Error saving persona. Please try again."
+      if (error instanceof Error) {
+        errorMessage = `Error: ${error.message}`
+      } else if (typeof error === "object" && error !== null) {
+        errorMessage = `Error: ${JSON.stringify(error)}`
+      }
+
+      alert(errorMessage)
     }
   }
 
@@ -508,17 +556,24 @@ function PersonaForm({
 
     setIsUploading(true)
     try {
-      // Try to use Vercel Blob storage first
-      const imageUrl = await uploadPersonaImage(file)
-      setFormData({ ...formData, image: imageUrl })
-    } catch (error) {
-      console.warn("Blob storage failed, falling back to base64:", error)
-      // Fallback to base64 if blob storage fails
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setFormData({ ...formData, image: event.target?.result as string })
+      console.log("Starting image upload process...")
+
+      // Try Vercel Blob storage first
+      try {
+        const imageUrl = await uploadPersonaImage(file)
+        console.log("Blob storage upload successful:", imageUrl)
+        setFormData({ ...formData, image: imageUrl })
+      } catch (blobError) {
+        console.warn("Blob storage failed, using base64 fallback:", blobError)
+
+        // Fallback to base64
+        const base64Image = await convertFileToBase64(file)
+        console.log("Base64 conversion successful")
+        setFormData({ ...formData, image: base64Image })
       }
-      reader.readAsDataURL(file)
+    } catch (error) {
+      console.error("All image upload methods failed:", error)
+      alert("Failed to upload image. Please try again or continue without an image.")
     } finally {
       setIsUploading(false)
     }
