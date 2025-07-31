@@ -29,7 +29,7 @@ export async function getAllResponses(): Promise<ResponseData[]> {
 
         for (let i = 1; i <= 20; i++) {
           const question = row[`question_${i}`]
-          const answer = row[`answer_${i}`]
+          const answer = row[`q${i}_response`] // Updated line
 
           if (question && answer) {
             questions.push(question)
@@ -77,7 +77,7 @@ export async function saveResponse(data: {
 
     for (let i = 0; i < Math.min(data.questions.length, data.answers.length, 20); i++) {
       insertData[`question_${i + 1}`] = data.questions[i]
-      insertData[`answer_${i + 1}`] = data.answers[i]
+      insertData[`q${i + 1}_response`] = data.answers[i] // Updated line
     }
 
     const { error } = await supabase.from("wide_responses").insert(insertData)
