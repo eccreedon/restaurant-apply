@@ -113,7 +113,7 @@ export async function saveResponse(responseData: {
 
     console.log("Validation passed, performing AI analysis...")
 
-    // Get AI analysis
+    // Get AI analysis (disabled for now)
     let analysis = null
     try {
       analysis = await analyzeAnswers(responseData.questions, responseData.answers, responseData.persona)
@@ -134,7 +134,7 @@ export async function saveResponse(responseData: {
       throw new Error(`Could not find persona: ${responseData.persona}`)
     }
 
-    // Prepare data for wide format database
+    // Prepare data for wide format database using the correct column names
     const insertData: any = {
       persona_id: personaData.id,
       first_name: responseData.first_name.trim(),
@@ -144,10 +144,10 @@ export async function saveResponse(responseData: {
       analysis: analysis,
     }
 
-    // Add questions and answers (up to 20 pairs)
+    // Add questions and answers using the correct column naming (q1_response, q2_response, etc.)
     for (let i = 0; i < Math.min(responseData.questions.length, responseData.answers.length, 20); i++) {
       insertData[`question_${i + 1}`] = responseData.questions[i]
-      insertData[`answer_${i + 1}`] = responseData.answers[i]
+      insertData[`q${i + 1}_response`] = responseData.answers[i] // Use q1_response format
     }
 
     console.log("Saving to wide_responses table with data:", insertData)
@@ -190,13 +190,13 @@ export async function getAllResponses(): Promise<ResponseData[]> {
 
     return (
       data?.map((row) => {
-        // Extract questions and answers from the wide format
+        // Extract questions and answers from the wide format using correct column names
         const questions: string[] = []
         const answers: string[] = []
 
         for (let i = 1; i <= 20; i++) {
           const question = row[`question_${i}`]
-          const answer = row[`answer_${i}`]
+          const answer = row[`q${i}_response`] // Use q1_response format
 
           if (question && answer) {
             questions.push(question)
@@ -235,12 +235,12 @@ export async function getResponseById(id: string): Promise<ResponseData | null> 
       return null
     }
 
-    // Convert wide format back to original format
+    // Convert wide format back to original format using correct column names
     const questions: string[] = []
     const answers: string[] = []
     for (let i = 1; i <= 20; i++) {
       const question = data[`question_${i}`]
-      const answer = data[`answer_${i}`]
+      const answer = data[`q${i}_response`] // Use q1_response format
       if (question && answer) {
         questions.push(question)
         answers.push(answer)
