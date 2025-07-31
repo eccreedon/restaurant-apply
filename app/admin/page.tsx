@@ -481,8 +481,11 @@ function PersonaForm({
 
     try {
       const personaData = {
-        ...formData,
-        icon: formData.emoji, // Map emoji back to icon for database compatibility
+        title: formData.title,
+        description: formData.description,
+        icon: formData.emoji,
+        color: formData.color,
+        image: formData.image,
         questions: formData.questions.filter((q) => q.trim()),
       }
 
@@ -495,6 +498,7 @@ function PersonaForm({
       onSave(personaData as PersonaConfig)
     } catch (error) {
       console.error("Error saving persona:", error)
+      alert("Error saving persona. Please try again.")
     }
   }
 
