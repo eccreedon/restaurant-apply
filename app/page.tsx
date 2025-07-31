@@ -280,7 +280,7 @@ function PersonaSelectorStep({
           <p className="text-gray-600">Select the position that best matches your experience or interest</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {personas.map((persona) => (
             <div
               key={persona.id}
@@ -488,15 +488,14 @@ function ThankYouStep({
               We encountered an issue while submitting your assessment. Please try again.
             </p>
             {error && <p className="text-sm text-red-600 mb-6">{error}</p>}
+            <button
+              onClick={onRestart}
+              className="px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Try Again
+            </button>
           </>
         )}
-
-        <button
-          onClick={onRestart}
-          className="px-8 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-        >
-          {success ? "Take Another Assessment" : "Try Again"}
-        </button>
       </div>
     </div>
   )
