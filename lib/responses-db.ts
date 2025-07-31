@@ -13,45 +13,6 @@ export interface ResponseData {
   created_at?: string
 }
 
-export async function getAllResponses(): Promise<ResponseData[]> {
-  try {
-    console.log("Fetching responses...")
-
-    const { data, error } = await supabase.from("responses").select("*").order("created_at", { ascending: false })
-
-    if (error) {
-      console.error("Error fetching responses:", error)
-      return []
-    }
-
-    return (
-      data?.map((row) => ({
-        id: row.id,
-        first_name: row.first_name,
-        last_name: row.last_name,
-        email: row.email,
-        phone: row.phone,
-        persona: row.persona,
-        questions: Array.isArray(row.questions)
-          ? row.questions
-          : typeof row.questions === "string"
-            ? JSON.parse(row.questions)
-            : [],
-        answers: Array.isArray(row.answers)
-          ? row.answers
-          : typeof row.answers === "string"
-            ? JSON.parse(row.answers)
-            : [],
-        analysis: row.analysis,
-        created_at: row.created_at,
-      })) || []
-    )
-  } catch (error) {
-    console.error("Error in getAllResponses:", error)
-    return []
-  }
-}
-
 export async function saveResponse(data: {
   first_name: string
   last_name: string
@@ -62,75 +23,113 @@ export async function saveResponse(data: {
   answers: string[]
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log("=== SAVING RESPONSE ===")
-    console.log("Input data:", data)
+    console.log("=== SAVING TO WIDE_RESPONSES TABLE ===")
+    console.log("Data received:", data)
 
-    // Validate input
-    if (!data.first_name?.trim()) {
-      return { success: false, error: "First name is required" }
-    }
-    if (!data.last_name?.trim()) {
-      return { success: false, error: "Last name is required" }
-    }
-    if (!data.email?.trim()) {
-      return { success: false, error: "Email is required" }
-    }
-    if (!data.persona?.trim()) {
-      return { success: false, error: "Persona is required" }
-    }
-    if (!data.answers?.length) {
-      return { success: false, error: "Answers are required" }
+    // Get persona_id from persona title
+    const { data: personaData, error: personaError } = await supabase
+      .from("personas")
+      .select("id")
+      .eq("title", data.persona)
+      .single()
+
+    if (personaError || !personaData) {
+      console.error("Could not find persona:", data.persona, personaError)
+      return { success: false, error: `Could not find persona: ${data.persona}` }
     }
 
-    // Prepare the data exactly as the table expects
-    const insertData = {
-      first_name: data.first_name.trim(),
-      last_name: data.last_name.trim(),
-      email: data.email.trim(),
-      phone: data.phone?.trim() || null,
-      persona: data.persona.trim(),
-      questions: data.questions, // Keep as array - Supabase will handle JSONB conversion
-      answers: data.answers, // Keep as array - Supabase will handle JSONB conversion
+    // Build insert data for wide_responses table
+    const insertData: any = {
+      first_name: data.first_name,
+      last_name: data.last_name,
+      email: data.email,
+      phone: data.phone || null,
+      persona_id: personaData.id,
     }
 
-    console.log("Prepared insert data:", insertData)
+    // Add questions and answers to the wide format
+    for (let i = 0; i < Math.min(data.questions.length, data.answers.length, 20); i++) {
+      insertData[`question_${i + 1}`] = data.questions[i]
+      insertData[`q${i + 1}_response`] = data.answers[i]
+    }
 
-    const { data: result, error } = await supabase.from("responses").insert([insertData]).select()
+    console.log("Inserting into wide_responses:", insertData)
+
+    const { data: result, error } = await supabase.from("wide_responses").insert(insertData).select().single()
 
     if (error) {
-      console.error("Supabase insert error:", error)
-      console.error("Error details:", {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      })
-      return { success: false, error: `Database error: ${error.message}` }
+      console.error("Database error:", error)
+      return { success: false, error: error.message }
     }
 
-    console.log("Insert successful:", result)
+    console.log("SUCCESS! Saved to wide_responses:", result)
     return { success: true }
   } catch (error) {
-    console.error("Unexpected error in saveResponse:", error)
+    console.error("Unexpected error:", error)
     return {
       success: false,
-      error: error instanceof Error ? error.message : "An unexpected error occurred",
+      error: error instanceof Error ? error.message : "Unknown error",
     }
+  }
+}
+
+export async function getAllResponses(): Promise<ResponseData[]> {
+  try {
+    const { data, error } = await supabase
+      .from("wide_responses")
+      .select(`
+        *,
+        personas!wide_responses_persona_id_fkey(title)
+      `)
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching responses:", error)
+      return []
+    }
+
+    return (
+      data?.map((row) => {
+        const questions: string[] = []
+        const answers: string[] = []
+
+        // Extract questions and answers from wide format
+        for (let i = 1; i <= 20; i++) {
+          const question = row[`question_${i}`]
+          const answer = row[`q${i}_response`]
+
+          if (question && answer) {
+            questions.push(question)
+            answers.push(answer)
+          }
+        }
+
+        return {
+          id: row.id,
+          first_name: row.first_name,
+          last_name: row.last_name,
+          email: row.email,
+          phone: row.phone,
+          persona: row.personas?.title || row.persona || "Unknown", // Updated line
+          questions,
+          answers,
+          analysis: row.analysis,
+          created_at: row.created_at,
+        }
+      }) || []
+    )
+  } catch (error) {
+    console.error("Error in getAllResponses:", error)
+    return []
   }
 }
 
 export async function deleteResponse(id: string): Promise<boolean> {
   try {
-    const { error } = await supabase.from("responses").delete().eq("id", id)
-
-    if (error) {
-      console.error("Error deleting response:", error)
-      return false
-    }
-
-    return true
+    const { error } = await supabase.from("wide_responses").delete().eq("id", id)
+    return !error
   } catch (error) {
-    console.error("Error in deleteResponse:", error)
+    console.error("Error deleting response:", error)
     return false
   }
 }
